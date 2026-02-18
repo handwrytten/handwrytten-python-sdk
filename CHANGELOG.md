@@ -5,6 +5,18 @@ All notable changes to the Handwrytten Python SDK will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-18
+
+### Added
+
+- **Basket management methods** on `client.basket`:
+  - `remove(basket_id)` — remove a single item from the basket (`basket/remove`)
+  - `clear()` — remove all items from the basket (`basket/clear`)
+  - `list()` — list all basket items with totals and pricing (`basket/allNew`)
+  - `get_item(basket_id)` — fetch details for a single basket item (`basket/item`)
+  - `count()` — get the number of items currently in the basket (`basket/count`)
+- `examples/example.py` demonstrating the full basket workflow (inspect, remove, clear)
+
 ## [1.0.0] - 2025-02-13
 
 ### Added

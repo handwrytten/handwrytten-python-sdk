@@ -1154,6 +1154,65 @@ class BasketResource:
 
         return self._http.post("orders/placeBasket", json_body=body)
 
+    def remove(self, basket_id: int) -> Dict[str, Any]:
+        """Remove a single item from the basket.
+
+        Args:
+            basket_id: The basket item ID returned by ``add_order()``.
+
+        Returns:
+            Dict with ``status`` and remaining items.
+
+        Example:
+            >>> result = client.basket.add_order(card_id="100", ...)
+            >>> basket_id = result["order_id"]
+            >>> client.basket.remove(basket_id)
+        """
+        return self._http.post("basket/remove", json_body={"id": basket_id})
+
+    def clear(self) -> Dict[str, Any]:
+        """Remove all items from the basket.
+
+        Returns:
+            Dict with ``status``.
+        """
+        return self._http.post("basket/clear", json_body={})
+
+    def list(self) -> Dict[str, Any]:
+        """List all items currently in the basket.
+
+        Returns:
+            Dict with ``items`` list, ``totals``, and ``test_mode``.
+
+        Example:
+            >>> basket = client.basket.list()
+            >>> for item in basket.get("items", []):
+            ...     print(item["basket_id"], item["status"])
+        """
+        return self._http.get("basket/allNew")
+
+    def get_item(self, basket_id: int) -> Dict[str, Any]:
+        """Get a single basket item by ID.
+
+        Args:
+            basket_id: The basket item ID.
+
+        Returns:
+            Dict with basket item details.
+        """
+        return self._http.get("basket/item", params={"id": basket_id})
+
+    def count(self) -> int:
+        """Get the number of items currently in the basket.
+
+        Returns:
+            Integer count of basket items.
+        """
+        data = self._http.get("basket/count")
+        if isinstance(data, dict):
+            return int(data.get("count", 0))
+        return 0
+
     def send(
         self,
         coupon_code: Optional[str] = None,

@@ -179,7 +179,46 @@ def main():
 
     # 10. Two-step basket workflow
     print("--- Two-Step Basket Order ---")
+
+    # Inspect the basket before adding anything
+    print(f"  Items in basket: {client.basket.count()}")
+
     # Step 1: Add order(s) to the basket
+    place_result = client.basket.add_order(
+        card_id=cards[0].id,
+        font=fonts[0].id,
+        return_address_id=sender_id,
+        addresses=[{
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "street1": "3433 E Main Ave",
+            "city": "Phoenix",
+            "state": "AZ",
+            "zip": "85001",
+            "message": "Hello from the basket workflow!",
+            "wishes": "Best,\nThe Team",
+        }],
+    )
+    print(f"  Order added to basket. order_id={place_result.get('order_id')}")
+
+    # List all items currently in the basket
+    basket = client.basket.list()
+    print(f"  Basket now has {client.basket.count()} item(s), grand total: {basket.get('totals', {}).get('grand_total')}")
+    for item in basket.get("items", []):
+        basket_id = item.get("basket_id")
+        print(f"    basket_id={basket_id} status={item.get('status')} price={item.get('price')}")
+
+    # Fetch a single basket item by basket_id
+    if basket.get("items"):
+        basket_id = basket["items"][0]["basket_id"]
+        item_detail = client.basket.get_item(basket_id)
+        print(f"  Item detail: basket_id={basket_id} font={item_detail.get('item', {}).get('font')}")
+
+        # Remove that item from the basket
+        client.basket.remove(basket_id=basket_id)
+        print(f"  Removed basket_id={basket_id}. Items remaining: {client.basket.count()}")
+
+    # Add a fresh order and submit it
     client.basket.add_order(
         card_id=cards[0].id,
         font=fonts[0].id,
@@ -195,10 +234,13 @@ def main():
             "wishes": "Best,\nThe Team",
         }],
     )
-    print("  Order added to basket.")
     # Step 2: Submit the basket
     result = client.basket.send()
     print(f"  Basket sent! {result}")
+
+    # Clear any leftover items
+    client.basket.clear()
+    print(f"  Basket cleared. Items remaining: {client.basket.count()}")
     print()
 
     # 11. Custom cards — upload images and create a card

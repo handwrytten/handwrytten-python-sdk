@@ -738,6 +738,80 @@ class TestBasket:
         assert sent["check_quantity"] is True
         assert sent["check_cass_before_submit"] == 0
 
+    def test_remove(self, client, mock_api):
+        mock_api.post(
+            BASE + "basket/remove",
+            json={"httpCode": 200, "status": "ok", "item": []},
+        )
+
+        result = client.basket.remove(basket_id=9517)
+
+        assert result["status"] == "ok"
+        sent = json.loads(mock_api.calls[0].request.body)
+        assert sent["id"] == 9517
+
+    def test_clear(self, client, mock_api):
+        mock_api.post(
+            BASE + "basket/clear",
+            json={"httpCode": 200, "status": "ok", "item": []},
+        )
+
+        result = client.basket.clear()
+
+        assert result["status"] == "ok"
+
+    def test_list(self, client, mock_api):
+        mock_api.get(
+            BASE + "basket/allNew",
+            json={
+                "httpCode": 200,
+                "status": "ok",
+                "totals": {"grand_total": 3.55},
+                "test_mode": 0,
+                "items": [
+                    {"id": 44373, "basket_id": 9517, "status": "basket", "price": 3.0},
+                ],
+            },
+        )
+
+        result = client.basket.list()
+
+        assert result["status"] == "ok"
+        assert len(result["items"]) == 1
+        assert result["items"][0]["basket_id"] == 9517
+        assert result["totals"]["grand_total"] == 3.55
+
+    def test_get_item(self, client, mock_api):
+        mock_api.get(
+            BASE + "basket/item",
+            json={
+                "httpCode": 200,
+                "status": "ok",
+                "item": {"id": "9519", "basket_id": 9519, "price": "3.7", "font": "hwJeff"},
+            },
+        )
+
+        result = client.basket.get_item(basket_id=9519)
+
+        assert result["status"] == "ok"
+        assert result["item"]["font"] == "hwJeff"
+        assert "id=9519" in mock_api.calls[0].request.url
+
+    def test_count(self, client, mock_api):
+        mock_api.get(
+            BASE + "basket/count",
+            json={"httpCode": 200, "status": "ok", "count": 3},
+        )
+
+        result = client.basket.count()
+
+        assert result == 3
+
+    def test_count_empty_basket(self, client, mock_api):
+        mock_api.get(BASE + "basket/count", json={"httpCode": 200, "status": "ok", "count": 0})
+
+        assert client.basket.count() == 0
+
 
 # ---------------------------------------------------------------------------
 # Address Book

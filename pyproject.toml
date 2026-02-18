@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "handwrytten"
-version = "1.0.0"
+version = "1.1.0"
 description = "Official Python SDK for the Handwrytten API — send real handwritten notes at scale"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.8"
-authors = [{ name = "Handwrytten", email = "api@handwrytten.com" }]
+authors = [{ name = "Handwrytten", email = "contact@handwrytten.com" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -39,8 +39,8 @@ dev = [
 [project.urls]
 Homepage = "https://www.handwrytten.com"
 Documentation = "https://www.handwrytten.com/api/"
-Repository = "https://github.com/handwrytten/handwrytten-python"
-Issues = "https://github.com/handwrytten/handwrytten-python/issues"
+Repository = "https://github.com/handwrytten/handwrytten-python-sdk"
+Issues = "https://github.com/handwrytten/handwrytten-python-sdk/issues"
 
 [tool.setuptools.packages.find]
 include = ["handwrytten*"]

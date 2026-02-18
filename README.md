@@ -385,6 +385,15 @@ client.basket.add_order(
 
 # Step 2: Submit the basket
 result = client.basket.send()
+
+# Inspect the basket before sending
+basket = client.basket.list()          # all items with totals
+item = client.basket.get_item(9517)    # single item by basket_id
+n = client.basket.count()              # number of items
+
+# Remove a specific item or clear everything
+client.basket.remove(basket_id=9517)
+client.basket.clear()
 ```
 
 ### Error Handling
@@ -423,7 +432,7 @@ except HandwryttenError as e:
 | `client.qr_codes` | `list()`, `create()`, `delete()`, `frames()` |
 | `client.address_book` | `list_recipients()`, `add_recipient()`, `update_recipient()`, `list_senders()`, `add_sender()`, `countries()`, `states(country)` |
 | `client.orders` | `send()`, `get(id)`, `list()` |
-| `client.basket` | `add_order()`, `send()` |
+| `client.basket` | `add_order()`, `send()`, `remove(basket_id)`, `clear()`, `list()`, `get_item(basket_id)`, `count()` |
 | `client.prospecting` | `calculate_targets(zip, radius)` |
 
 ## Configuration
@@ -438,7 +447,7 @@ client = Handwrytten(
 
 ## Full Example
 
-See [`example.py`](example.py) for a complete working demo that exercises every resource: listing cards/fonts, sending single and bulk orders, uploading custom images, creating custom cards, and cleanup.
+See [`examples/example.py`](examples/example.py) for a complete working demo that exercises every resource: listing cards/fonts, sending single and bulk orders, uploading custom images, creating custom cards, and cleanup.
 
 ## Requirements
 
