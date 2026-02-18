@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "handwrytten"
+version = "1.0.0"
+description = "Official Python SDK for the Handwrytten API — send real handwritten notes at scale"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [{ name = "Handwrytten", email = "api@handwrytten.com" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = ["requests>=2.25.0", "click>=8.0"]
+
+[project.scripts]
+handwrytten = "handwrytten.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "responses>=0.23",
+    "mypy>=1.0",
+    "ruff>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://www.handwrytten.com"
+Documentation = "https://www.handwrytten.com/api/"
+Repository = "https://github.com/handwrytten/handwrytten-python"
+Issues = "https://github.com/handwrytten/handwrytten-python/issues"
+
+[tool.setuptools.packages.find]
+include = ["handwrytten*"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 100
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true

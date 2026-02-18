@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.handwrytten.com)",
+      "WebFetch(domain:app.handwrytten.com)",
+      "WebFetch(domain:app.swaggerhub.com)",
+      "WebFetch(domain:www.postman.com)",
+      "WebFetch(domain:handwrytten.com)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "Bash(python main.py:*)",
+      "Bash(pip install:*)",
+      "Bash(python -c:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -m build:*)"
+    ]
+  }
+}
