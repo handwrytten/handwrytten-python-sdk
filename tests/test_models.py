@@ -5,6 +5,7 @@ from handwrytten.models import (
     Country,
     CustomCard,
     CustomImage,
+    Denomination,
     Dimension,
     Font,
     GiftCard,
@@ -15,6 +16,7 @@ from handwrytten.models import (
     Recipient,
     SavedAddress,
     Sender,
+    Signature,
     State,
     User,
     ZoneType,
@@ -109,6 +111,25 @@ class TestFont:
         assert f.preview_url == "https://x.com/p.jpg"
 
 
+class TestDenomination:
+    def test_from_dict_basic(self):
+        d = Denomination.from_dict({"id": 10, "nominal": 25.0, "price": 27.5})
+        assert d.id == 10
+        assert d.nominal == 25.0
+        assert d.price == 27.5
+
+    def test_defaults(self):
+        d = Denomination.from_dict({})
+        assert d.id == 0
+        assert d.nominal == 0.0
+        assert d.price == 0.0
+
+    def test_raw_preserved(self):
+        data = {"id": 1, "nominal": 10, "price": 12, "extra": True}
+        d = Denomination.from_dict(data)
+        assert d.raw["extra"] is True
+
+
 class TestGiftCard:
     def test_from_dict_basic(self):
         gc = GiftCard.from_dict({"id": 5, "title": "$25 Amazon", "amount": 25.0})
@@ -123,6 +144,27 @@ class TestGiftCard:
     def test_image_url(self):
         gc = GiftCard.from_dict({"id": 1, "title": "X", "image_url": "https://x.com/gc.jpg"})
         assert gc.image_url == "https://x.com/gc.jpg"
+
+    def test_with_denominations(self):
+        gc = GiftCard.from_dict({
+            "id": 5,
+            "title": "Amazon",
+            "denominations": [
+                {"id": 1, "nominal": 25.0, "price": 27.5},
+                {"id": 2, "nominal": 50.0, "price": 55.0},
+            ],
+        })
+        assert len(gc.denominations) == 2
+        assert gc.denominations[0].nominal == 25.0
+        assert gc.denominations[1].price == 55.0
+
+    def test_empty_denominations(self):
+        gc = GiftCard.from_dict({"id": 1, "title": "X"})
+        assert gc.denominations == []
+
+    def test_non_list_denominations_ignored(self):
+        gc = GiftCard.from_dict({"id": 1, "title": "X", "denominations": "invalid"})
+        assert gc.denominations == []
 
 
 class TestInsert:
@@ -360,6 +402,23 @@ class TestSavedAddress:
             "zip": "85001",
         })
         assert str(sa) == "Jane Doe, 123 Main, Phoenix, AZ 85001"
+
+
+class TestSignature:
+    def test_from_dict_basic(self):
+        s = Signature.from_dict({"id": 7, "preview": "https://x.com/sig.png"})
+        assert s.id == 7
+        assert s.preview == "https://x.com/sig.png"
+
+    def test_defaults(self):
+        s = Signature.from_dict({})
+        assert s.id == 0
+        assert s.preview is None
+
+    def test_raw_preserved(self):
+        data = {"id": 1, "preview": "x", "extra": True}
+        s = Signature.from_dict(data)
+        assert s.raw["extra"] is True
 
 
 class TestCountry:

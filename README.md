@@ -249,6 +249,9 @@ for img in images:
 covers = client.custom_cards.list_images(image_type="cover")
 logos = client.custom_cards.list_images(image_type="logo")
 
+# Get details of a custom card
+card = client.custom_cards.get(card_id=456)
+
 # Delete an image
 client.custom_cards.delete_image(image_id=123)
 
@@ -276,8 +279,34 @@ customizer_fonts = client.fonts.list_for_customizer()
 ### Gift Cards and Inserts
 
 ```python
+# List gift cards with their denominations (price points)
 gift_cards = client.gift_cards.list()
+for gc in gift_cards:
+    print(f"{gc.title}: {len(gc.denominations)} denominations")
+    for d in gc.denominations:
+        print(f"  ${d.nominal} (price: ${d.price})")
+
+# Include a gift card denomination in an order
+client.orders.send(
+    card_id="12345",
+    font="hwDavid",
+    message="Enjoy!",
+    denomination_id=gc.denominations[0].id,
+    recipient={...},
+)
+
+# List inserts (optionally include historical/discontinued)
 inserts = client.inserts.list()
+all_inserts = client.inserts.list(include_historical=True)
+
+# Include an insert in an order
+client.orders.send(
+    card_id="12345",
+    font="hwDavid",
+    message="Hello!",
+    insert_id=inserts[0].id,
+    recipient={...},
+)
 ```
 
 ### QR Codes
@@ -358,9 +387,26 @@ recipients = client.address_book.list_recipients()
 for r in recipients:
     print(r.id, r)  # e.g. "123 Jane Doe, 456 New St, Scottsdale, AZ 85001"
 
+# Delete addresses
+client.address_book.delete_recipient(address_id=recipient_id)
+client.address_book.delete_sender(address_id=sender_id)
+
+# Batch delete
+client.address_book.delete_recipient(address_ids=[1, 2, 3])
+
 # Countries and states
 countries = client.address_book.countries()
 states = client.address_book.states("US")
+```
+
+### Signatures
+
+List the user's saved handwriting signatures for use in orders.
+
+```python
+signatures = client.auth.list_signatures()
+for sig in signatures:
+    print(f"  [{sig.id}] preview={sig.preview}")
 ```
 
 ### Two-Step Basket Workflow
@@ -394,6 +440,9 @@ n = client.basket.count()              # number of items
 # Remove a specific item or clear everything
 client.basket.remove(basket_id=9517)
 client.basket.clear()
+
+# List previously submitted baskets
+past = client.orders.list_past_baskets(page=1)
 ```
 
 ### Error Handling
@@ -423,15 +472,15 @@ except HandwryttenError as e:
 
 | Resource | Methods |
 |---|---|
-| `client.auth` | `get_user()`, `login()` |
+| `client.auth` | `get_user()`, `login()`, `list_signatures()` |
 | `client.cards` | `list()`, `get(id)`, `categories()` |
-| `client.custom_cards` | `dimensions()`, `upload_image()`, `check_image()`, `list_images()`, `delete_image()`, `create()`, `delete()` |
+| `client.custom_cards` | `dimensions()`, `upload_image()`, `check_image()`, `list_images()`, `delete_image()`, `create()`, `get()`, `delete()` |
 | `client.fonts` | `list()`, `list_for_customizer()` |
 | `client.gift_cards` | `list()` |
-| `client.inserts` | `list()` |
+| `client.inserts` | `list(include_historical)` |
 | `client.qr_codes` | `list()`, `create()`, `delete()`, `frames()` |
-| `client.address_book` | `list_recipients()`, `add_recipient()`, `update_recipient()`, `list_senders()`, `add_sender()`, `countries()`, `states(country)` |
-| `client.orders` | `send()`, `get(id)`, `list()` |
+| `client.address_book` | `list_recipients()`, `add_recipient()`, `update_recipient()`, `delete_recipient()`, `list_senders()`, `add_sender()`, `delete_sender()`, `countries()`, `states(country)` |
+| `client.orders` | `send()`, `get(id)`, `list()`, `list_past_baskets()` |
 | `client.basket` | `add_order()`, `send()`, `remove(basket_id)`, `clear()`, `list()`, `get_item(basket_id)`, `count()` |
 | `client.prospecting` | `calculate_targets(zip, radius)` |
 

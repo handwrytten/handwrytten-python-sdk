@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 
 @dataclass
@@ -76,6 +76,25 @@ class Font:
 
 
 @dataclass
+class Denomination:
+    """A gift card denomination (price point)."""
+
+    id: int
+    nominal: float
+    price: float
+    raw: dict = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Denomination":
+        return cls(
+            id=int(data.get("id", 0)),
+            nominal=float(data.get("nominal", 0)),
+            price=float(data.get("price", 0)),
+            raw=data,
+        )
+
+
+@dataclass
 class GiftCard:
     """A gift card product."""
 
@@ -83,15 +102,23 @@ class GiftCard:
     title: str
     amount: Optional[float] = None
     image_url: Optional[str] = None
+    denominations: List[Denomination] = field(default_factory=list)
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
     def from_dict(cls, data: dict) -> "GiftCard":
+        denoms_raw = data.get("denominations", [])
+        denoms = (
+            [Denomination.from_dict(d) for d in denoms_raw]
+            if isinstance(denoms_raw, list)
+            else []
+        )
         return cls(
             id=str(data.get("id", "")),
             title=data.get("title", data.get("name", "")),
             amount=data.get("amount") or data.get("value"),
             image_url=data.get("image_url") or data.get("image"),
+            denominations=denoms,
             raw=data,
         )
 
@@ -338,6 +365,23 @@ class SavedAddress:
     def __str__(self) -> str:
         name = " ".join(filter(None, [self.first_name, self.last_name]))
         return f"{name}, {self.street1}, {self.city}, {self.state} {self.zip}"
+
+
+@dataclass
+class Signature:
+    """A saved handwriting signature."""
+
+    id: int
+    preview: Optional[str] = None
+    raw: dict = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Signature":
+        return cls(
+            id=int(data.get("id", 0)),
+            preview=data.get("preview"),
+            raw=data,
+        )
 
 
 @dataclass

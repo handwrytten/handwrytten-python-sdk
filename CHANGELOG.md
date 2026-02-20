@@ -5,6 +5,25 @@ All notable changes to the Handwrytten Python SDK will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-20
+
+### Added
+
+- **Gift card denominations** — `GiftCard` now includes a `denominations` list with price points (id, nominal value, price)
+- **Denomination model** — new `Denomination` dataclass exported from the package
+- **Signature model** — new `Signature` dataclass for saved handwriting signatures
+- `client.auth.list_signatures()` — list the user's saved handwriting signatures
+- `client.custom_cards.get(card_id)` — get details of a custom card
+- `client.orders.list_past_baskets(page)` — list previously submitted baskets
+- `client.address_book.delete_recipient(address_id, address_ids)` — delete saved recipient addresses (single or batch)
+- `client.address_book.delete_sender(address_id, address_ids)` — delete saved sender addresses (single or batch)
+- `client.inserts.list(include_historical)` — optional flag to include historical inserts
+
+### Fixed
+
+- Gift card list now correctly extracts items from `gcards` key in API response
+- Inserts list now correctly extracts items from `inserts` key in API response
+
 ## [1.1.0] - 2026-02-18
 
 ### Added
