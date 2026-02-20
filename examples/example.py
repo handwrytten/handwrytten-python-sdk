@@ -43,12 +43,30 @@ def main():
     print(f"  ... {len(customizer_fonts)} total customizer fonts")
     print()
 
-    # 5. List gift cards
+    # 5. List gift cards with denominations
     print("--- Gift Cards ---")
     gift_cards = client.gift_cards.list()
     for gc in gift_cards[:5]:
-        print(f"  [{gc.id}] {gc.title}")
+        print(f"  [{gc.id}] {gc.title} ({len(gc.denominations)} denominations)")
+        for d in gc.denominations[:3]:
+            print(f"       ${d.nominal} (price: ${d.price})")
     print(f"  ... {len(gift_cards)} total gift cards")
+    print()
+
+    # 5b. List inserts (including historical)
+    print("--- Inserts ---")
+    inserts = client.inserts.list()
+    print(f"  Active inserts: {len(inserts)}")
+    all_inserts = client.inserts.list(include_historical=True)
+    print(f"  All inserts (incl. historical): {len(all_inserts)}")
+    print()
+
+    # 5c. List signatures
+    print("--- Signatures ---")
+    signatures = client.auth.list_signatures()
+    for sig in signatures[:5]:
+        print(f"  [{sig.id}] preview={sig.preview or 'N/A'}")
+    print(f"  ... {len(signatures)} total signatures")
     print()
 
     # 6. List orders
@@ -88,6 +106,35 @@ def main():
     )
     print("  Order sent!")
     print()
+
+    # 7b. Send an order with a gift card denomination and an insert
+    if gift_cards and gift_cards[0].denominations and inserts:
+        print("--- Send Order with Gift Card & Insert ---")
+        client.orders.send(
+            card_id=cards[0].id,
+            font=fonts[0].id,
+            message="Enjoy this gift!",
+            denomination_id=gift_cards[0].denominations[0].id,
+            insert_id=inserts[0].id,
+            sender={
+                "firstName": "David",
+                "lastName": "Wachs",
+                "street1": "3433 E Main Ave",
+                "city": "Phoenix",
+                "state": "AZ",
+                "zip": "85018",
+            },
+            recipient={
+                "firstName": "Jane",
+                "lastName": "Doe",
+                "street1": "3433 E Main Ave",
+                "city": "Phoenix",
+                "state": "AZ",
+                "zip": "85001",
+            },
+        )
+        print("  Order with gift card & insert sent!")
+        print()
 
     # 8. Send bulk — multiple recipients with per-recipient messages
     print("--- Send Bulk Order ---")
@@ -306,6 +353,10 @@ def main():
         qr_code_size_percent=100,
     )
     print(f"    Custom card created: card_id={custom_card.card_id}")
+
+    # Get details of the custom card we just created
+    card_detail = client.custom_cards.get(card_id=custom_card.card_id)
+    print(f"    Custom card detail: card_id={card_detail.card_id}")
     print()
 
     # 12. Send an order using the custom card
@@ -324,6 +375,22 @@ def main():
         },
     )
     print("  Custom card order sent!")
+    print()
+
+    # 13. List past baskets
+    print("--- Past Baskets ---")
+    past_baskets = client.orders.list_past_baskets(page=1)
+    print(f"  Past baskets: {len(past_baskets)}")
+    for pb in past_baskets[:3]:
+        print(f"    {pb}")
+    print()
+
+    # 14. Delete saved addresses
+    print("--- Delete Saved Addresses ---")
+    client.address_book.delete_recipient(address_id=recipient_id)
+    print(f"  Deleted recipient address: id={recipient_id}")
+    client.address_book.delete_sender(address_id=sender_id)
+    print(f"  Deleted sender address: id={sender_id}")
     print()
 
     # Clean up: delete the custom card and images

@@ -19,6 +19,7 @@ from handwrytten.models import (
     Recipient,
     SavedAddress,
     Sender,
+    Signature,
     State,
     User,
 )
@@ -59,6 +60,21 @@ class AuthResource:
             "auth/authorization",
             json_body={"login": email, "password": password},
         )
+
+    def list_signatures(self) -> List[Signature]:
+        """Get the user's saved handwriting signatures.
+
+        Returns:
+            List of Signature objects.
+        """
+        data = self._http.get("profile/signatures")
+        if isinstance(data, dict):
+            items = data.get("signatures", [])
+        elif isinstance(data, list):
+            items = data
+        else:
+            items = []
+        return [Signature.from_dict(s) for s in items]
 
 
 # ---------------------------------------------------------------------------
@@ -453,6 +469,18 @@ class CustomCardsResource:
         data = self._http.post("cards/createCustomCard", json_body=body)
         return CustomCard.from_dict(data if isinstance(data, dict) else {})
 
+    def get(self, card_id: int) -> CustomCard:
+        """Get details of a custom card.
+
+        Args:
+            card_id: ID of the custom card.
+
+        Returns:
+            CustomCard object.
+        """
+        data = self._http.get("design/getCustomCard", params={"id": card_id})
+        return CustomCard.from_dict(data if isinstance(data, dict) else {})
+
     def delete(self, card_id: int) -> Dict[str, Any]:
         """Delete a custom card.
 
@@ -524,11 +552,14 @@ class GiftCardsResource:
     def list(self) -> List[GiftCard]:
         """Get all available gift card products.
 
+        Each GiftCard includes a ``denominations`` list with available
+        price points (id, nominal value, and price).
+
         Returns:
             List of GiftCard objects.
         """
         data = self._http.get("giftCards/list")
-        items = data if isinstance(data, list) else data.get("results", [])
+        items = data if isinstance(data, list) else data.get("gcards", data.get("results", []))
         return [GiftCard.from_dict(g) for g in items]
 
 
@@ -542,14 +573,21 @@ class InsertsResource:
     def __init__(self, http: HttpClient):
         self._http = http
 
-    def list(self) -> List[Insert]:
+    def list(self, include_historical: bool = False) -> List[Insert]:
         """Get all available inserts.
+
+        Args:
+            include_historical: If ``True``, also return inserts that are
+                no longer available for new orders.
 
         Returns:
             List of Insert objects.
         """
-        data = self._http.get("inserts/list")
-        items = data if isinstance(data, list) else data.get("results", [])
+        params: Dict[str, Any] = {}
+        if include_historical:
+            params["include_historical"] = 1
+        data = self._http.get("inserts/list", params=params)
+        items = data if isinstance(data, list) else data.get("inserts", data.get("results", []))
         return [Insert.from_dict(i) for i in items]
 
 
@@ -868,6 +906,29 @@ class AddressBookResource:
             return int(addr.get("id", addr.get("address_id", address_id)))
         return address_id
 
+    def delete_recipient(
+        self,
+        address_id: Optional[int] = None,
+        address_ids: Optional[List[int]] = None,
+    ) -> Dict[str, Any]:
+        """Delete one or more saved recipient addresses.
+
+        Provide **one** of ``address_id`` (single) or ``address_ids`` (batch).
+
+        Args:
+            address_id: Single address ID to delete.
+            address_ids: List of address IDs to delete.
+
+        Returns:
+            API response dict.
+        """
+        body: Dict[str, Any] = {}
+        if address_id is not None:
+            body["address_id"] = address_id
+        if address_ids is not None:
+            body["address_ids"] = address_ids
+        return self._http.post("profile/deleteRecipient", json_body=body)
+
     # -- Senders (saved return/"from" addresses) ----------------------------
 
     def list_senders(self) -> List[SavedAddress]:
@@ -955,6 +1016,29 @@ class AddressBookResource:
             addr = data.get("address", data)
             return int(addr.get("id", addr.get("address_id", 0)))
         return 0
+
+    def delete_sender(
+        self,
+        address_id: Optional[int] = None,
+        address_ids: Optional[List[int]] = None,
+    ) -> Dict[str, Any]:
+        """Delete one or more saved sender (return) addresses.
+
+        Provide **one** of ``address_id`` (single) or ``address_ids`` (batch).
+
+        Args:
+            address_id: Single address ID to delete.
+            address_ids: List of address IDs to delete.
+
+        Returns:
+            API response dict.
+        """
+        body: Dict[str, Any] = {}
+        if address_id is not None:
+            body["address_id"] = address_id
+        if address_ids is not None:
+            body["address_ids"] = address_ids
+        return self._http.post("profile/deleteAddress", json_body=body)
 
     # -- Countries and states -----------------------------------------------
 
@@ -1612,3 +1696,17 @@ class OrdersResource:
         )
         items = data if isinstance(data, list) else data.get("results", data.get("orders", []))
         return [Order.from_dict(o) for o in items]
+
+    def list_past_baskets(self, page: int = 1) -> List[Dict[str, Any]]:
+        """List previously submitted baskets.
+
+        Args:
+            page: Page number (1-indexed).
+
+        Returns:
+            List of past basket dicts.
+        """
+        data = self._http.get("orders/pastBaskets", params={"page": page})
+        if isinstance(data, dict):
+            return data.get("baskets", data.get("results", []))
+        return data if isinstance(data, list) else []

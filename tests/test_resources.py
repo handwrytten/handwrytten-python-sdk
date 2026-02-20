@@ -144,6 +144,29 @@ class TestGiftCards:
         assert items[0].title == "$25 Amazon"
         assert items[0].amount == 25.0
 
+    def test_list_gcards_key(self, client, mock_api):
+        mock_api.get(
+            BASE + "giftCards/list",
+            json={"gcards": [
+                {
+                    "id": 1,
+                    "title": "Amazon",
+                    "denominations": [
+                        {"id": 10, "nominal": 25.0, "price": 27.5},
+                        {"id": 11, "nominal": 50.0, "price": 55.0},
+                    ],
+                },
+            ]},
+        )
+
+        items = client.gift_cards.list()
+
+        assert len(items) == 1
+        assert items[0].title == "Amazon"
+        assert len(items[0].denominations) == 2
+        assert items[0].denominations[0].nominal == 25.0
+        assert items[0].denominations[1].price == 55.0
+
 
 # ---------------------------------------------------------------------------
 # Inserts
@@ -160,6 +183,27 @@ class TestInserts:
 
         assert len(items) == 1
         assert items[0].title == "Business Card"
+
+    def test_list_inserts_key(self, client, mock_api):
+        mock_api.get(
+            BASE + "inserts/list",
+            json={"inserts": [{"id": 1, "title": "Flyer"}]},
+        )
+
+        items = client.inserts.list()
+
+        assert len(items) == 1
+        assert items[0].title == "Flyer"
+
+    def test_list_include_historical(self, client, mock_api):
+        mock_api.get(
+            BASE + "inserts/list",
+            json=[{"id": 1, "title": "Old Insert"}],
+        )
+
+        client.inserts.list(include_historical=True)
+
+        assert "include_historical=1" in mock_api.calls[0].request.url
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +242,31 @@ class TestAuth:
         sent = json.loads(mock_api.calls[0].request.body)
         assert sent["login"] == "user@example.com"
         assert sent["password"] == "password123"
+
+    def test_list_signatures(self, client, mock_api):
+        mock_api.get(
+            BASE + "profile/signatures",
+            json={"signatures": [
+                {"id": 1, "preview": "https://x.com/sig1.png"},
+                {"id": 2, "preview": "https://x.com/sig2.png"},
+            ]},
+        )
+
+        sigs = client.auth.list_signatures()
+
+        assert len(sigs) == 2
+        assert sigs[0].id == 1
+        assert sigs[0].preview == "https://x.com/sig1.png"
+
+    def test_list_signatures_list_response(self, client, mock_api):
+        mock_api.get(
+            BASE + "profile/signatures",
+            json=[{"id": 1, "preview": "https://x.com/sig.png"}],
+        )
+
+        sigs = client.auth.list_signatures()
+
+        assert len(sigs) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -575,6 +644,30 @@ class TestOrders:
         assert order.id == "ord_abc"
         assert order.status == "shipped"
         assert order.created_at == "2025-01-15T10:30:00Z"
+
+    def test_list_past_baskets(self, client, mock_api):
+        mock_api.get(
+            BASE + "orders/pastBaskets",
+            json={"baskets": [
+                {"id": 1, "total": 5.99, "status": "sent"},
+                {"id": 2, "total": 3.50, "status": "sent"},
+            ]},
+        )
+
+        baskets = client.orders.list_past_baskets()
+
+        assert len(baskets) == 2
+        assert baskets[0]["total"] == 5.99
+
+    def test_list_past_baskets_with_page(self, client, mock_api):
+        mock_api.get(
+            BASE + "orders/pastBaskets",
+            json={"baskets": []},
+        )
+
+        client.orders.list_past_baskets(page=3)
+
+        assert "page=3" in mock_api.calls[0].request.url
 
     def test_send_invalid_recipient_type_raises(self, client):
         import pytest
@@ -1058,6 +1151,52 @@ class TestAddressBook:
 
         assert result == 777
 
+    def test_delete_recipient_single(self, client, mock_api):
+        mock_api.post(
+            BASE + "profile/deleteRecipient",
+            json={"status": "ok"},
+        )
+
+        result = client.address_book.delete_recipient(address_id=123)
+
+        assert result["status"] == "ok"
+        sent = json.loads(mock_api.calls[0].request.body)
+        assert sent["address_id"] == 123
+
+    def test_delete_recipient_batch(self, client, mock_api):
+        mock_api.post(
+            BASE + "profile/deleteRecipient",
+            json={"status": "ok"},
+        )
+
+        client.address_book.delete_recipient(address_ids=[1, 2, 3])
+
+        sent = json.loads(mock_api.calls[0].request.body)
+        assert sent["address_ids"] == [1, 2, 3]
+
+    def test_delete_sender_single(self, client, mock_api):
+        mock_api.post(
+            BASE + "profile/deleteAddress",
+            json={"status": "ok"},
+        )
+
+        result = client.address_book.delete_sender(address_id=456)
+
+        assert result["status"] == "ok"
+        sent = json.loads(mock_api.calls[0].request.body)
+        assert sent["address_id"] == 456
+
+    def test_delete_sender_batch(self, client, mock_api):
+        mock_api.post(
+            BASE + "profile/deleteAddress",
+            json={"status": "ok"},
+        )
+
+        client.address_book.delete_sender(address_ids=[7, 8, 9])
+
+        sent = json.loads(mock_api.calls[0].request.body)
+        assert sent["address_ids"] == [7, 8, 9]
+
 
 # ---------------------------------------------------------------------------
 # Custom Cards
@@ -1264,6 +1403,18 @@ class TestCustomCards:
 
         sent = json.loads(mock_api.calls[0].request.body)
         assert sent["custom_param"] == "value"
+
+    def test_get_custom_card(self, client, mock_api):
+        mock_api.get(
+            BASE + "design/getCustomCard",
+            json={"card_id": 999, "category_id": 5},
+        )
+
+        card = client.custom_cards.get(card_id=999)
+
+        assert card.card_id == 999
+        assert card.category_id == 5
+        assert "id=999" in mock_api.calls[0].request.url
 
     def test_delete_custom_card(self, client, mock_api):
         mock_api.post(
