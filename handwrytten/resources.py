@@ -1198,19 +1198,27 @@ class BasketResource:
                     if row_wishes is not None:
                         row["wishes"] = row_wishes
                     converted.append(row)
+            # Inject return_address_id into each address row (the API
+            # treats rows like spreadsheet imports and may ignore the
+            # top-level value).
+            if return_address_id is not None:
+                raid = int(return_address_id)
+                for row in converted:
+                    if "return_address_id" not in row:
+                        row["return_address_id"] = raid
             body["addresses"] = converted
         if address_ids is not None:
             body["address_ids"] = address_ids
         if return_address_id is not None:
-            body["return_address_id"] = return_address_id
+            body["return_address_id"] = int(return_address_id)
         if denomination_id is not None:
-            body["denomination_id"] = denomination_id
+            body["denomination_id"] = int(denomination_id)
         if insert_id is not None:
-            body["insert_id"] = insert_id
+            body["insert_id"] = int(insert_id)
         if signature_id is not None:
-            body["signature_id"] = signature_id
+            body["signature_id"] = int(signature_id)
         if signature2_id is not None:
-            body["signature2_id"] = signature2_id
+            body["signature2_id"] = int(signature2_id)
         if date_send is not None:
             body["date_send"] = date_send
         if coupon_code is not None:
@@ -1394,13 +1402,20 @@ _CAMEL_TO_API = {
 
 
 def _flatten_address(data: Dict[str, Any], prefix: str) -> Dict[str, str]:
-    """Flatten a camelCase address dict into ``prefix_field`` API fields."""
+    """Flatten a camelCase address dict into ``prefix_field`` API fields.
+
+    Keys that already start with ``return_`` are passed through as-is
+    (inline return-address fields like ``return_first_name``).
+    """
     result: Dict[str, str] = {}
     for key, value in data.items():
         if value is None:
             continue
-        api_suffix = _CAMEL_TO_API.get(key, key)
-        result[f"{prefix}_{api_suffix}"] = value
+        if key.startswith("return_"):
+            result[key] = value
+        else:
+            api_suffix = _CAMEL_TO_API.get(key, key)
+            result[f"{prefix}_{api_suffix}"] = value
     return result
 
 

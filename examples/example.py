@@ -6,7 +6,7 @@ import random # qr codes must have unique names, so we use this to generate a ra
 from handwrytten import Handwrytten, HandwryttenError, QRCodeLocation, ZoneType
 
 # Set your API key here or via the HANDWRYTTEN_API_KEY environment variable
-API_KEY = os.environ.get("HANDWRYTTEN_API_KEY", "<your_api_key_here>")
+API_KEY = os.environ.get("HANDWRYTTEN_API_KEY", "<your_api_ke>")
 
 
 def main():
