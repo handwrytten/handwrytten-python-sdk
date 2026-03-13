@@ -32,23 +32,30 @@ class HttpClient:
 
     def __init__(
         self,
-        api_key: str,
+        api_key: Optional[str] = None,
+        access_token: Optional[str] = None,
         base_url: str = DEFAULT_BASE_URL,
         timeout: int = DEFAULT_TIMEOUT,
         max_retries: int = MAX_RETRIES,
         session: Optional[requests.Session] = None,
     ):
         self.api_key = api_key
+        self.access_token = access_token
         self.base_url = base_url.rstrip("/") + "/"
         self.timeout = timeout
         self.max_retries = max_retries
         self.session = session or requests.Session()
+
+        auth_header = (
+            f"Bearer {self.access_token}" if self.access_token else self.api_key or ""
+        )
+
         self.session.headers.update(
             {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
-                "Authorization": self.api_key,
-                "User-Agent": "handwrytten-python/1.1.0",
+                "Authorization": auth_header,
+                "User-Agent": "handwrytten-python/1.3.0",
             }
         )
 

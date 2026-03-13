@@ -29,8 +29,11 @@ class Handwrytten:
     access to all API resources as convenient, namespaced attributes.
 
     Args:
-        api_key: Your Handwrytten API key. Obtain one from
+        api_key: Your Handwrytten API key (legacy auth). Provide either
+            ``api_key`` or ``access_token``. Obtain an API key from
             https://app.handwrytten.com/api-keys
+        access_token: OAuth2 access token (Bearer auth). Provide either
+            ``api_key`` or ``access_token``.
         base_url: Override the API base URL (default: production).
         timeout: Request timeout in seconds.
         max_retries: Number of automatic retries for transient errors.
@@ -41,45 +44,32 @@ class Handwrytten:
         >>> from handwrytten import Handwrytten
         >>> client = Handwrytten("your_api_key_here")
         >>>
+        >>> # Or with an OAuth access token:
+        >>> client = Handwrytten(access_token="oauth_token_here")
+        >>>
         >>> # Check your account
         >>> user = client.auth.get_user()
         >>> print(f"Logged in as {user.email}")
-        >>>
-        >>> # Browse available cards and fonts
-        >>> cards = client.cards.list()
-        >>> fonts = client.fonts.list()
-        >>>
-        >>> # Send a handwritten note
-        >>> result = client.orders.send(
-        ...     card_id=cards[0].id,
-        ...     message="Thanks for being an amazing customer!",
-        ...     font=fonts[0].label,
-        ...     recipient={
-        ...         "firstName": "Jane",
-        ...         "lastName": "Doe",
-        ...         "street1": "123 Main Street",
-        ...         "city": "Phoenix",
-        ...         "state": "AZ",
-        ...         "zip": "85001",
-        ...     },
-        ... )
     """
 
     def __init__(
         self,
-        api_key: str,
+        api_key: Optional[str] = None,
+        access_token: Optional[str] = None,
         base_url: str = DEFAULT_BASE_URL,
         timeout: int = DEFAULT_TIMEOUT,
         max_retries: int = 3,
         session: Optional[requests.Session] = None,
     ):
-        if not api_key:
+        if not api_key and not access_token:
             raise ValueError(
-                "An API key is required. Get one at https://app.handwrytten.com/api-keys"
+                "An API key or access token is required. "
+                "Get an API key at https://app.handwrytten.com/api-keys"
             )
 
         self._http = HttpClient(
             api_key=api_key,
+            access_token=access_token,
             base_url=base_url,
             timeout=timeout,
             max_retries=max_retries,
@@ -100,5 +90,8 @@ class Handwrytten:
         self.prospecting = ProspectingResource(self._http)
 
     def __repr__(self) -> str:
+        if self._http.access_token:
+            masked = self._http.access_token[:8] + "..."
+            return f"Handwrytten(access_token='{masked}')"
         masked = self._http.api_key[:8] + "..." if self._http.api_key else "None"
         return f"Handwrytten(api_key='{masked}')"
