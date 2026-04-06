@@ -1657,6 +1657,10 @@ class OrdersResource:
             place_kwargs["addresses"] = addresses
         if address_ids:
             place_kwargs["address_ids"] = address_ids
+        if message is not None:
+            place_kwargs["message"] = message
+        if wishes is not None:
+            place_kwargs["wishes"] = wishes
         if sender_id is not None:
             place_kwargs["return_address_id"] = sender_id
         if message_align is not None:
