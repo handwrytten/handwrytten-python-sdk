@@ -1575,14 +1575,32 @@ class OrdersResource:
             recipient = [recipient]
 
         addresses: List[Dict[str, Any]] = []
+        address_ids: List[int] = []
         for r in recipient:
-            row: Dict[str, Any] = {}
-
             if isinstance(r, int):
-                # Saved address ID
-                row["address_id"] = r
+                # Numeric IDs must go via the top-level address_ids param so
+                # the API resolves the saved address.  Embedding them inside
+                # ``addresses`` as {"address_id": …} is not recognised and
+                # causes blank addresses.
+                address_ids.append(r)
             elif isinstance(r, Recipient):
-                row = _flatten_address(r.to_dict(), "to")
+                row: Dict[str, Any] = _flatten_address(r.to_dict(), "to")
+
+                # Apply defaults for message/wishes if not already set
+                if "message" not in row and message is not None:
+                    row["message"] = message
+                if "wishes" not in row and wishes is not None:
+                    row["wishes"] = wishes
+
+                # Apply default sender from_* fields if no per-row sender
+                if (
+                    default_sender_fields is not None
+                    and not any(k.startswith("from_") for k in row)
+                    and "return_address_id" not in row
+                ):
+                    row.update(default_sender_fields)
+
+                addresses.append(row)
             elif isinstance(r, dict):
                 # Pull out per-row overrides before flattening
                 r = dict(r)  # shallow copy to avoid mutating caller's dict
@@ -1609,33 +1627,40 @@ class OrdersResource:
                         if isinstance(row_sender, Sender):
                             row_sender = row_sender.to_dict()
                         row.update(_flatten_address(row_sender, "from"))
+
+                # Apply defaults for message/wishes if not already set
+                if "message" not in row and message is not None:
+                    row["message"] = message
+                if "wishes" not in row and wishes is not None:
+                    row["wishes"] = wishes
+
+                # Apply default sender from_* fields if no per-row sender
+                if (
+                    default_sender_fields is not None
+                    and not any(k.startswith("from_") for k in row)
+                    and "return_address_id" not in row
+                ):
+                    row.update(default_sender_fields)
+
+                addresses.append(row)
             else:
                 raise TypeError(
                     "Each recipient must be a Recipient, dict, or int"
                 )
 
-            # Apply defaults for message/wishes if not already set
-            if "message" not in row and message is not None:
-                row["message"] = message
-            if "wishes" not in row and wishes is not None:
-                row["wishes"] = wishes
-
-            # Apply default sender from_* fields if no per-row sender
-            if (
-                default_sender_fields is not None
-                and not any(k.startswith("from_") for k in row)
-                and "return_address_id" not in row
-            ):
-                row.update(default_sender_fields)
-
-            addresses.append(row)
-
         # Build placeBasket kwargs
         place_kwargs: Dict[str, Any] = {
             "card_id": card_id,
             "font": font,
-            "addresses": addresses,
         }
+        if addresses:
+            place_kwargs["addresses"] = addresses
+        if address_ids:
+            place_kwargs["address_ids"] = address_ids
+        if message is not None:
+            place_kwargs["message"] = message
+        if wishes is not None:
+            place_kwargs["wishes"] = wishes
         if sender_id is not None:
             place_kwargs["return_address_id"] = sender_id
         if message_align is not None:
