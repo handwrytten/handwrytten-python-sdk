@@ -55,7 +55,7 @@ class HttpClient:
                 "Accept": "application/json",
                 "Content-Type": "application/json",
                 "Authorization": auth_header,
-                "User-Agent": "handwrytten-python/1.3.0",
+                "User-Agent": "handwrytten-python/1.4.0",
             }
         )
 

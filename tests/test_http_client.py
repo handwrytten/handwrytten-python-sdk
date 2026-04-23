@@ -33,7 +33,7 @@ class TestAuthentication:
         assert "handwrytten-python" in mock_api.calls[0].request.headers["User-Agent"]
 
     def test_missing_api_key_raises(self):
-        with pytest.raises(ValueError, match="API key is required"):
+        with pytest.raises(ValueError, match="API key or access token is required"):
             from handwrytten import Handwrytten
             Handwrytten(api_key="")
 

@@ -124,20 +124,17 @@ result = client.orders.send(
     recipient=67890, # saved recipient address ID
 )
 
-# Mix saved IDs and inline addresses in a bulk send
+# Bulk with multiple saved IDs (top-level message/wishes applies to all)
 result = client.orders.send(
     card_id="12345",
     font="hwDavid",
     message="Hello!",
     sender=98765,
-    recipient=[
-        67890,  # saved address ID
-        {"firstName": "Jane", "lastName": "Doe",
-         "street1": "123 Main St", "city": "Phoenix",
-         "state": "AZ", "zip": "85001"},
-    ],
+    recipient=[67890, 11111, 22222],
 )
 ```
+
+> `recipient` must be **either** all saved-address IDs **or** all full addresses (`Recipient` / dict) — not a mix. Saved IDs use the top-level `message` / `wishes`; full addresses carry their own per-row values. The API handles the two modes differently, so the SDK raises `ValueError` if you mix them.
 
 ### Use Typed Models
 
@@ -399,6 +396,37 @@ countries = client.address_book.countries()
 states = client.address_book.states("US")
 ```
 
+### Stamp Options & Delivery Confirmation
+
+Pick a postal stamp option (e.g. First Class vs. Presorted) for US orders, and request delivery confirmation or CASS-only address validation.
+
+```python
+from handwrytten import DeliveryConfirmation
+
+# List available stamp options
+options = client.shipping.stamp_options()
+for opt in options:
+    print(opt.id, opt.name, opt.price)
+
+# Use one on an order (US mail only — ignored for international)
+client.orders.send(
+    card_id="12345",
+    font="hwDavid",
+    message="Hello!",
+    recipient={...},
+    stamp_option_id=options[0].id,
+    delivery_confirmation=DeliveryConfirmation.CONFIRMATION,  # 0/1/2 or bool
+)
+```
+
+`delivery_confirmation` accepts an `int`:
+
+- `0` (`DeliveryConfirmation.NONE`) — no confirmation
+- `1` (`DeliveryConfirmation.CONFIRMATION`) — delivery confirmation
+- `2` (`DeliveryConfirmation.CASS_ONLY`) — CASS address validation only
+
+Booleans remain backward compatible: `False` → `0`, `True` → `1`.
+
 ### Signatures
 
 List the user's saved handwriting signatures for use in orders.
@@ -480,6 +508,7 @@ except HandwryttenError as e:
 | `client.inserts` | `list(include_historical)` |
 | `client.qr_codes` | `list()`, `create()`, `delete()`, `frames()` |
 | `client.address_book` | `list_recipients()`, `add_recipient()`, `update_recipient()`, `delete_recipient()`, `list_senders()`, `add_sender()`, `delete_sender()`, `countries()`, `states(country)` |
+| `client.shipping` | `stamp_options()` |
 | `client.orders` | `send()`, `get(id)`, `list()`, `list_past_baskets()` |
 | `client.basket` | `add_order()`, `send()`, `remove(basket_id)`, `clear()`, `list()`, `get_item(basket_id)`, `count()` |
 | `client.prospecting` | `calculate_targets(zip, radius)` |

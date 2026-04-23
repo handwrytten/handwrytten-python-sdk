@@ -19,6 +19,7 @@ from handwrytten.resources import (
     OrdersResource,
     ProspectingResource,
     QRCodesResource,
+    ShippingResource,
 )
 
 
@@ -85,6 +86,7 @@ class Handwrytten:
         self.inserts = InsertsResource(self._http)
         self.qr_codes = QRCodesResource(self._http)
         self.address_book = AddressBookResource(self._http)
+        self.shipping = ShippingResource(self._http)
         self.basket = BasketResource(self._http)
         self.orders = OrdersResource(self._http, self.basket)
         self.prospecting = ProspectingResource(self._http)

@@ -18,7 +18,7 @@ Usage:
     ... )
 """
 
-__version__ = "1.2.1"
+__version__ = "1.4.0"
 
 from handwrytten.client import Handwrytten
 from handwrytten.exceptions import (
@@ -33,6 +33,7 @@ from handwrytten.models import (
     Card,
     CustomCard,
     CustomImage,
+    DeliveryConfirmation,
     Denomination,
     Dimension,
     Font,
@@ -45,6 +46,7 @@ from handwrytten.models import (
     SavedAddress,
     Sender,
     Signature,
+    StampOption,
     Country,
     State,
     User,
@@ -62,6 +64,7 @@ __all__ = [
     "Card",
     "CustomCard",
     "CustomImage",
+    "DeliveryConfirmation",
     "Denomination",
     "Dimension",
     "Font",
@@ -74,6 +77,7 @@ __all__ = [
     "SavedAddress",
     "Sender",
     "Signature",
+    "StampOption",
     "Country",
     "State",
     "User",
