@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "handwrytten"
-version = "1.3.2"
+version = "1.4.0"
 description = "Official Python SDK for the Handwrytten API — send real handwritten notes at scale"
 readme = "README.md"
 license = "MIT"

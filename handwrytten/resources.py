@@ -20,6 +20,7 @@ from handwrytten.models import (
     SavedAddress,
     Sender,
     Signature,
+    StampOption,
     State,
     User,
 )
@@ -1101,7 +1102,8 @@ class BasketResource:
         coupon_code: Optional[str] = None,
         check_quantity: Optional[bool] = None,
         check_quantity_inserts: Optional[bool] = None,
-        delivery_confirmation: Optional[bool] = None,
+        delivery_confirmation: Optional[Union[bool, int]] = None,
+        stamp_option_id: Optional[int] = None,
         shipping_method_id: Optional[int] = None,
         shipping_rate_id: Optional[int] = None,
         shipping_address_id: Optional[int] = None,
@@ -1141,7 +1143,14 @@ class BasketResource:
             coupon_code: Promotional coupon code.
             check_quantity: Verify card stock availability.
             check_quantity_inserts: Verify insert stock availability.
-            delivery_confirmation: Request delivery confirmation.
+            delivery_confirmation: Confirmation level. Accepts an ``int``:
+                ``0`` (none), ``1`` (delivery confirmation), or ``2`` (CASS
+                validation only). Booleans are backward compatible —
+                ``False`` → ``0``, ``True`` → ``1``. See
+                ``handwrytten.DeliveryConfirmation`` for constants.
+            stamp_option_id: Postal stamp option ID (e.g. First Class vs.
+                Presorted). Applies to US mail; ignored for international.
+                Fetch available options via ``client.shipping.stamp_options()``.
             shipping_method_id: Shipping method ID.
             shipping_rate_id: Shipping rate ID.
             shipping_address_id: Shipping address ID.
@@ -1169,6 +1178,14 @@ class BasketResource:
             ...     }],
             ... )
         """
+        if addresses is not None and address_ids is not None:
+            raise ValueError(
+                "Pass either addresses (list of dicts) or address_ids (list "
+                "of saved-address IDs), not both. The API uses top-level "
+                "message/wishes with address_ids and per-row message/wishes "
+                "with addresses, so mixing is not supported."
+            )
+
         body: Dict[str, Any] = {"card_id": int(card_id)}
 
         if message is not None:
@@ -1228,7 +1245,9 @@ class BasketResource:
         if check_quantity_inserts is not None:
             body["check_quantity_inserts"] = check_quantity_inserts
         if delivery_confirmation is not None:
-            body["delivery_confirmation"] = delivery_confirmation
+            body["delivery_confirmation"] = int(delivery_confirmation)
+        if stamp_option_id is not None:
+            body["stamp_option_id"] = int(stamp_option_id)
         if shipping_method_id is not None:
             body["shipping_method_id"] = shipping_method_id
         if shipping_rate_id is not None:
@@ -1420,6 +1439,41 @@ def _flatten_address(data: Dict[str, Any], prefix: str) -> Dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
+# Shipping
+# ---------------------------------------------------------------------------
+
+class ShippingResource:
+    """Shipping-related lookups (stamp options, etc.)."""
+
+    def __init__(self, http: HttpClient):
+        self._http = http
+
+    def stamp_options(self) -> List[StampOption]:
+        """Get available postal stamp options.
+
+        Pass a returned ``id`` to ``orders.send()`` or
+        ``basket.add_order()`` via the ``stamp_option_id`` parameter.
+        Applies to US mail; ignored for international.
+
+        Returns:
+            List of StampOption objects.
+
+        Example:
+            >>> options = client.shipping.stamp_options()
+            >>> for opt in options:
+            ...     print(opt.id, opt.name)
+        """
+        data = self._http.get("shipping/stampOptions")
+        if isinstance(data, dict):
+            items = data.get("stampOptions", data.get("options", data.get("results", [])))
+        elif isinstance(data, list):
+            items = data
+        else:
+            items = []
+        return [StampOption.from_dict(o) for o in items]
+
+
+# ---------------------------------------------------------------------------
 # Orders (the star of the show)
 # ---------------------------------------------------------------------------
 
@@ -1451,7 +1505,8 @@ class OrdersResource:
         coupon_code: Optional[str] = None,
         date_send: Optional[str] = None,
         check_cass_before_submit: Optional[bool] = None,
-        delivery_confirmation: Optional[bool] = None,
+        delivery_confirmation: Optional[Union[bool, int]] = None,
+        stamp_option_id: Optional[int] = None,
         client_metadata: Optional[str] = None,
         suppress_warnings: Optional[bool] = None,
         signature_id: Optional[int] = None,
@@ -1469,7 +1524,13 @@ class OrdersResource:
         - A dict with camelCase keys (``firstName``, ``street1``, etc.).
         - A dict already in ``to_*`` format (``to_first_name``, etc.).
         - An ``int`` saved address ID.
-        - A **list** of any of the above for bulk orders.
+        - A **list** of any *one* of the above for bulk orders.
+
+        For bulk sends, the list must be **either** all saved-address IDs
+        **or** all full addresses — mixing raises ``ValueError``. With IDs
+        the API uses top-level ``message``/``wishes``; with full addresses
+        each row carries its own values (top-level values serve as
+        defaults).
 
         The ``sender`` (return address) can be:
         - A ``Sender`` object.
@@ -1501,7 +1562,14 @@ class OrdersResource:
             date_send: Scheduled send date.
             check_cass_before_submit: Validate recipient address before
                 submitting.
-            delivery_confirmation: Request delivery confirmation.
+            delivery_confirmation: Confirmation level. Accepts an ``int``:
+                ``0`` (none), ``1`` (delivery confirmation), or ``2`` (CASS
+                validation only). Booleans are backward compatible —
+                ``False`` → ``0``, ``True`` → ``1``. See
+                ``handwrytten.DeliveryConfirmation`` for constants.
+            stamp_option_id: Postal stamp option ID (e.g. First Class vs.
+                Presorted). Applies to US mail; ignored for international.
+                Fetch available options via ``client.shipping.stamp_options()``.
             client_metadata: Metadata string for tracking.
             suppress_warnings: Suppress merge-field warnings.
             signature_id: Signature ID for the wishes section.
@@ -1538,7 +1606,7 @@ class OrdersResource:
                     recipient=67890,   # saved recipient address ID
                 )
 
-            Per-recipient sender and message overrides::
+            Per-recipient sender and message overrides (full addresses only)::
 
                 client.orders.send(
                     card_id="12345",
@@ -1553,7 +1621,12 @@ class OrdersResource:
                             "message": "Thanks Jane!",
                             "sender": {"firstName": "Other", ...},
                         },
-                        67890,  # saved address ID, uses default sender
+                        {
+                            "firstName": "John", "lastName": "Smith",
+                            "street1": "456 Oak Ave", "city": "Tempe",
+                            "state": "AZ", "zip": "85281",
+                            "message": "Great work, John!",
+                        },
                     ],
                 )
         """
@@ -1574,10 +1647,27 @@ class OrdersResource:
         if not isinstance(recipient, list):
             recipient = [recipient]
 
+        # The API accepts either a list of full addresses (each carrying its
+        # own message/wishes) OR a list of saved address IDs (using top-level
+        # message/wishes) — not both. Mixing is rejected up front rather than
+        # sent to the API, where the resulting behaviour is undefined.
+        # bool is a subclass of int; exclude it so True/False aren't treated
+        # as saved-address IDs.
+        has_ids = any(isinstance(r, int) and not isinstance(r, bool) for r in recipient)
+        has_full = any(not (isinstance(r, int) and not isinstance(r, bool)) for r in recipient)
+        if has_ids and has_full:
+            raise ValueError(
+                "recipient must be all saved-address IDs (int) or all full "
+                "addresses (Recipient/dict) — not a mix. Either look up the "
+                "saved addresses with client.address_book.list_recipients() "
+                "and send full dicts, or save the inline addresses first and "
+                "send IDs."
+            )
+
         addresses: List[Dict[str, Any]] = []
         address_ids: List[int] = []
         for r in recipient:
-            if isinstance(r, int):
+            if isinstance(r, int) and not isinstance(r, bool):
                 # Numeric IDs must go via the top-level address_ids param so
                 # the API resolves the saved address.  Embedding them inside
                 # ``addresses`` as {"address_id": …} is not recognised and
@@ -1673,6 +1763,8 @@ class OrdersResource:
             place_kwargs["date_send"] = date_send
         if delivery_confirmation is not None:
             place_kwargs["delivery_confirmation"] = delivery_confirmation
+        if stamp_option_id is not None:
+            place_kwargs["stamp_option_id"] = stamp_option_id
         if client_metadata is not None:
             place_kwargs["client_metadata"] = client_metadata
         if suppress_warnings is not None:

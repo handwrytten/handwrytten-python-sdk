@@ -383,6 +383,12 @@ class TestOrders:
         assert sent["return_address_id"] == 12345
 
     def test_send_with_int_recipient(self, client, mock_api):
+        """Saved address IDs go through the top-level ``address_ids`` param.
+
+        The API resolves them server-side and applies the top-level
+        ``message`` / ``wishes`` — embedding IDs inside ``addresses`` as
+        ``{"address_id": …}`` is not supported.
+        """
         self._mock_order_flow(mock_api)
 
         client.orders.send(
@@ -393,8 +399,9 @@ class TestOrders:
         )
 
         sent = json.loads(mock_api.calls[0].request.body)
-        assert sent["addresses"][0]["address_id"] == 67890
-        assert sent["addresses"][0]["message"] == "Thanks!"
+        assert sent["address_ids"] == [67890]
+        assert "addresses" not in sent
+        assert sent["message"] == "Thanks!"
 
     def test_send_bulk_recipients(self, client, mock_api):
         self._mock_order_flow(mock_api)
@@ -431,29 +438,41 @@ class TestOrders:
         # Second recipient gets default message
         assert sent["addresses"][1]["message"] == "Default msg"
 
-    def test_send_bulk_mixed_types(self, client, mock_api):
+    def test_send_bulk_all_ids(self, client, mock_api):
+        """Bulk send with all saved-address IDs uses top-level message/wishes."""
         self._mock_order_flow(mock_api)
 
         client.orders.send(
             card_id="100",
             font="hwDavid",
             message="Hello!",
-            recipient=[
-                Recipient(
-                    first_name="Jane", last_name="Doe",
-                    street1="123 Main", city="Phoenix", state="AZ", zip="85001",
-                ),
-                67890,  # saved address ID
-                {"firstName": "Bob", "lastName": "X", "street1": "1",
-                 "city": "Y", "state": "AZ", "zip": "85001"},
-            ],
+            recipient=[67890, 11111, 22222],
         )
 
         sent = json.loads(mock_api.calls[0].request.body)
-        assert len(sent["addresses"]) == 3
-        assert sent["addresses"][0]["to_first_name"] == "Jane"
-        assert sent["addresses"][1]["address_id"] == 67890
-        assert sent["addresses"][2]["to_first_name"] == "Bob"
+        assert sent["address_ids"] == [67890, 11111, 22222]
+        assert "addresses" not in sent
+        assert sent["message"] == "Hello!"
+
+    def test_send_bulk_mixed_ids_and_dicts_raises(self, client):
+        """Mixing saved IDs and full addresses is rejected up front."""
+        import pytest
+
+        with responses.RequestsMock():
+            with pytest.raises(ValueError, match="all saved-address IDs .* or all full"):
+                client.orders.send(
+                    card_id="100",
+                    font="hwDavid",
+                    message="Hello!",
+                    recipient=[
+                        Recipient(
+                            first_name="Jane", last_name="Doe",
+                            street1="123 Main", city="Phoenix",
+                            state="AZ", zip="85001",
+                        ),
+                        67890,  # mixing an ID with a full address → error
+                    ],
+                )
 
     def test_send_per_recipient_sender_override(self, client, mock_api):
         self._mock_order_flow(mock_api)
@@ -562,10 +581,42 @@ class TestOrders:
         assert sent["font_size"] == 14
         assert sent["auto_font_size"] is True
         assert sent["message_align"] == "center"
-        assert sent["delivery_confirmation"] is True
+        # Booleans are coerced to int on the wire (backward-compatible mapping).
+        assert sent["delivery_confirmation"] == 1
         assert sent["client_metadata"] == "meta123"
         assert sent["signature_id"] == 5
         assert sent["signature2_id"] == 6
+
+    def test_send_delivery_confirmation_int(self, client, mock_api):
+        """``delivery_confirmation`` accepts an int (0/1/2) and is sent as int."""
+        self._mock_order_flow(mock_api)
+
+        client.orders.send(
+            card_id="100",
+            font="hwDavid",
+            message="Hi",
+            recipient={"firstName": "J", "lastName": "D", "street1": "1",
+                        "city": "X", "state": "AZ", "zip": "85001"},
+            delivery_confirmation=2,  # CASS validation only
+        )
+
+        sent = json.loads(mock_api.calls[0].request.body)
+        assert sent["delivery_confirmation"] == 2
+
+    def test_send_with_stamp_option_id(self, client, mock_api):
+        self._mock_order_flow(mock_api)
+
+        client.orders.send(
+            card_id="100",
+            font="hwDavid",
+            message="Hi",
+            recipient={"firstName": "J", "lastName": "D", "street1": "1",
+                        "city": "X", "state": "AZ", "zip": "85001"},
+            stamp_option_id=3,
+        )
+
+        sent = json.loads(mock_api.calls[0].request.body)
+        assert sent["stamp_option_id"] == 3
 
     def test_send_with_coupon_and_credit_card(self, client, mock_api):
         self._mock_order_flow(mock_api)
@@ -757,6 +808,17 @@ class TestBasket:
         sent = json.loads(mock_api.calls[0].request.body)
         assert sent["address_ids"] == [123, 456]
 
+    def test_add_order_rejects_both_addresses_and_address_ids(self, client):
+        import pytest
+
+        with responses.RequestsMock():
+            with pytest.raises(ValueError, match="either addresses .* or address_ids"):
+                client.basket.add_order(
+                    card_id="100",
+                    addresses=[{"to_first_name": "Jane", "to_last_name": "Doe"}],
+                    address_ids=[123],
+                )
+
     def test_add_order_with_return_address_id(self, client, mock_api):
         mock_api.post(BASE + "orders/placeBasket", json={"order_id": "1"})
 
@@ -799,9 +861,33 @@ class TestBasket:
         assert sent["signature2_id"] == 6
         assert sent["date_send"] == "2025-06-01"
         assert sent["couponCode"] == "SAVE10"
-        assert sent["delivery_confirmation"] is True
+        assert sent["delivery_confirmation"] == 1
         assert sent["client_metadata"] == "meta"
         assert sent["supressWarnings"] is True
+
+    def test_add_order_delivery_confirmation_int(self, client, mock_api):
+        mock_api.post(BASE + "orders/placeBasket", json={"order_id": "1"})
+
+        client.basket.add_order(
+            card_id="100",
+            address_ids=[1],
+            delivery_confirmation=2,
+        )
+
+        sent = json.loads(mock_api.calls[0].request.body)
+        assert sent["delivery_confirmation"] == 2
+
+    def test_add_order_with_stamp_option_id(self, client, mock_api):
+        mock_api.post(BASE + "orders/placeBasket", json={"order_id": "1"})
+
+        client.basket.add_order(
+            card_id="100",
+            address_ids=[1],
+            stamp_option_id=5,
+        )
+
+        sent = json.loads(mock_api.calls[0].request.body)
+        assert sent["stamp_option_id"] == 5
 
     def test_send(self, client, mock_api):
         mock_api.post(
@@ -1577,3 +1663,38 @@ class TestProspecting:
 
         sent = json.loads(mock_api.calls[0].request.body)
         assert sent["category"] == "residential"
+
+
+# ---------------------------------------------------------------------------
+# Shipping
+# ---------------------------------------------------------------------------
+
+class TestShipping:
+    def test_stamp_options_dict_response(self, client, mock_api):
+        mock_api.get(
+            BASE + "shipping/stampOptions",
+            json={"stampOptions": [
+                {"id": 1, "name": "First Class", "price": 0.73},
+                {"id": 2, "name": "Presorted", "price": 0.55,
+                 "description": "Bulk mail rate"},
+            ]},
+        )
+
+        options = client.shipping.stamp_options()
+
+        assert len(options) == 2
+        assert options[0].id == 1
+        assert options[0].name == "First Class"
+        assert options[0].price == 0.73
+        assert options[1].description == "Bulk mail rate"
+
+    def test_stamp_options_list_response(self, client, mock_api):
+        mock_api.get(
+            BASE + "shipping/stampOptions",
+            json=[{"id": 1, "name": "First Class"}],
+        )
+
+        options = client.shipping.stamp_options()
+
+        assert len(options) == 1
+        assert options[0].name == "First Class"

@@ -158,6 +158,18 @@ class QRCodeLocation:
     MAIN = "main"
 
 
+class DeliveryConfirmation:
+    """Values for the ``delivery_confirmation`` order parameter.
+
+    The API accepts an integer ``0``–``2``. Booleans remain backward
+    compatible: ``False`` → ``NONE``, ``True`` → ``CONFIRMATION``.
+    """
+
+    NONE = 0
+    CONFIRMATION = 1
+    CASS_ONLY = 2
+
+
 @dataclass
 class QRCode:
     """A QR code attachment."""
@@ -414,5 +426,32 @@ class State:
         return cls(
             code=data.get("code", data.get("abbreviation", "")),
             name=data.get("name", ""),
+            raw=data,
+        )
+
+
+@dataclass
+class StampOption:
+    """A postal stamp option (e.g. First Class, Presorted).
+
+    Pass the ``id`` to ``orders.send()`` / ``basket.add_order()`` via the
+    ``stamp_option_id`` parameter. Applies to US mail; ignored for
+    international.
+    """
+
+    id: int
+    name: str
+    description: Optional[str] = None
+    price: Optional[float] = None
+    raw: dict = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "StampOption":
+        price = data.get("price")
+        return cls(
+            id=int(data.get("id", 0)),
+            name=data.get("name", data.get("title", data.get("label", ""))),
+            description=data.get("description"),
+            price=float(price) if price is not None else None,
             raw=data,
         )

@@ -5,6 +5,21 @@ All notable changes to the Handwrytten Python SDK will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-04-22
+
+### Added
+
+- **Stamp options** — `client.shipping.stamp_options()` returns available postal stamp options (e.g. First Class vs. Presorted) from `GET /shipping/stampOptions`
+- **StampOption model** — new `StampOption` dataclass exported from the package
+- `stamp_option_id` parameter on `client.orders.send()` and `client.basket.add_order()` — applies to US mail; ignored for international
+- **DeliveryConfirmation constants** — new `DeliveryConfirmation` class exported with `NONE` (0), `CONFIRMATION` (1), `CASS_ONLY` (2) for the widened `delivery_confirmation` parameter
+
+### Changed
+
+- `delivery_confirmation` on `client.orders.send()` and `client.basket.add_order()` now accepts an `int` (`0` none, `1` delivery confirmation, `2` CASS validation only) in addition to `bool`. Booleans remain backward compatible — `False` maps to `0`, `True` maps to `1`.
+- `client.orders.send()` now rejects mixing saved-address IDs with full addresses in the `recipient` list. The API treats the two modes differently (top-level `message`/`wishes` for IDs, per-row for full addresses), so the SDK raises `ValueError` up front rather than producing undefined server behavior. Pass either all IDs or all full addresses.
+- `client.basket.add_order()` now raises `ValueError` if both `addresses` and `address_ids` are passed, for the same reason.
+
 ## [1.2.0] - 2026-02-20
 
 ### Added
