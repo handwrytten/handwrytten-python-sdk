@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
-import os
 from pathlib import Path
-from typing import Optional
 
 import click
 
@@ -15,7 +14,7 @@ CONFIG_DIR = Path.home() / ".config" / "handwrytten"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 
-def load_api_key() -> Optional[str]:
+def load_api_key() -> str | None:
     """Load API key from config file, falling back to None.
 
     Priority:
@@ -36,10 +35,8 @@ def save_api_key(api_key: str) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     data = {}
     if CONFIG_FILE.exists():
-        try:
+        with contextlib.suppress(json.JSONDecodeError, OSError):
             data = json.loads(CONFIG_FILE.read_text())
-        except (json.JSONDecodeError, OSError):
-            pass
     data["api_key"] = api_key
     CONFIG_FILE.write_text(json.dumps(data, indent=2))
     # Restrict permissions to owner only

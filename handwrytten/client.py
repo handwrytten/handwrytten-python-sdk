@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import requests
 
 from handwrytten.http_client import DEFAULT_BASE_URL, DEFAULT_TIMEOUT, HttpClient
@@ -55,12 +53,12 @@ class Handwrytten:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        access_token: Optional[str] = None,
+        api_key: str | None = None,
+        access_token: str | None = None,
         base_url: str = DEFAULT_BASE_URL,
         timeout: int = DEFAULT_TIMEOUT,
         max_retries: int = 3,
-        session: Optional[requests.Session] = None,
+        session: requests.Session | None = None,
     ):
         if not api_key and not access_token:
             raise ValueError(

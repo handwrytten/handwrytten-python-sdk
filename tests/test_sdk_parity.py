@@ -5,8 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from handwrytten import Handwrytten, HandwryttenError, Country
-from handwrytten import DeliveryConfirmation, GiftCard, User
+from handwrytten import Country, DeliveryConfirmation, GiftCard, Handwrytten, HandwryttenError, User
 
 BASE = "https://api.handwrytten.com/v2/"
 FIXTURE = json.loads((Path(__file__).parent / "fixtures/sdk-parity.json").read_text())

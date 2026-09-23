@@ -1,12 +1,10 @@
 """Tests for the HTTP client: auth headers, error handling, retries."""
 
-import responses
 import pytest
 
 from handwrytten.exceptions import (
     AuthenticationError,
     BadRequestError,
-    HandwryttenError,
     NotFoundError,
     RateLimitError,
     ServerError,
@@ -30,7 +28,10 @@ class TestAuthentication:
 
         client.auth.get_user()
 
-        assert "handwrytten-python" in mock_api.calls[0].request.headers["User-Agent"]
+        from handwrytten import __version__
+
+        ua = mock_api.calls[0].request.headers["User-Agent"]
+        assert ua == f"handwrytten-python/{__version__}"
 
     def test_missing_api_key_raises(self):
         with pytest.raises(ValueError, match="API key or access token is required"):

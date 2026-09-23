@@ -422,8 +422,8 @@ client.orders.send(
 `delivery_confirmation` accepts an `int`:
 
 - `0` (`DeliveryConfirmation.NONE`) — no confirmation
-- `1` (`DeliveryConfirmation.CONFIRMATION`) — delivery confirmation
-- `2` (`DeliveryConfirmation.CASS_ONLY`) — CASS address validation only
+- `1` (`DeliveryConfirmation.CONFIRMATION`, alias `DELIVERY_CONFIRMATION`) — delivery confirmation
+- `2` (`DeliveryConfirmation.CASS_ONLY`, alias `CASS_VALIDATION`) — CASS address validation only
 
 Booleans remain backward compatible: `False` → `0`, `True` → `1`.
 
@@ -529,7 +529,7 @@ See [`examples/example.py`](examples/example.py) for a complete working demo tha
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.10+
 - `requests`
 
 ## License

@@ -3,7 +3,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any
+
+
+def _to_float(value: Any) -> float | None:
+    """Coerce API numerics (ints, floats, numeric strings) to float.
+
+    Returns None when the value is absent, empty or not numeric.
+    """
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_int(value: Any, default: int = 0) -> int:
+    """Coerce API identifiers to int, falling back to ``default`` when absent or invalid."""
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 @dataclass
@@ -11,22 +34,22 @@ class User:
     """Authenticated user profile."""
 
     id: str
-    email: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    company: Optional[str] = None
-    credits: Optional[float] = None
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    company: str | None = None
+    credits: float | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "User":
+    def from_dict(cls, data: dict) -> User:
         return cls(
             id=str(data.get("id", data.get("uid", ""))),
             email=data.get("email"),
             first_name=data.get("first_name") or data.get("firstName"),
             last_name=data.get("last_name") or data.get("lastName"),
             company=data.get("company"),
-            credits=float(data["credits"]) if data.get("credits") is not None else None,
+            credits=_to_float(data.get("credits")),
             raw=data,
         )
 
@@ -37,13 +60,13 @@ class Card:
 
     id: str
     title: str
-    image_url: Optional[str] = None
-    category: Optional[str] = None
-    cover: Optional[str] = None
+    image_url: str | None = None
+    category: str | None = None
+    cover: str | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Card":
+    def from_dict(cls, data: dict) -> Card:
         return cls(
             id=str(data.get("id", "")),
             title=data.get("title", data.get("name", "")),
@@ -61,11 +84,11 @@ class Font:
     id: str
     name: str
     label: str
-    preview_url: Optional[str] = None
+    preview_url: str | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Font":
+    def from_dict(cls, data: dict) -> Font:
         return cls(
             id=str(data.get("id", "")),
             name=data.get("name", data.get("title", "")),
@@ -85,7 +108,7 @@ class Denomination:
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Denomination":
+    def from_dict(cls, data: dict) -> Denomination:
         return cls(
             id=int(data.get("id", 0)),
             nominal=float(data.get("nominal", 0)),
@@ -100,13 +123,13 @@ class GiftCard:
 
     id: str
     title: str
-    amount: Optional[float] = None
-    image_url: Optional[str] = None
-    denominations: List[Denomination] = field(default_factory=list)
+    amount: float | None = None
+    image_url: str | None = None
+    denominations: list[Denomination] = field(default_factory=list)
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "GiftCard":
+    def from_dict(cls, data: dict) -> GiftCard:
         amount = data.get("amount")
         if amount is None:
             amount = data.get("value")
@@ -119,7 +142,7 @@ class GiftCard:
         return cls(
             id=str(data.get("id", "")),
             title=data.get("title", data.get("name", "")),
-            amount=float(amount) if amount is not None else None,
+            amount=_to_float(amount),
             image_url=data.get("image_url") or data.get("image"),
             denominations=denoms,
             raw=data,
@@ -132,11 +155,11 @@ class Insert:
 
     id: str
     title: str
-    image_url: Optional[str] = None
+    image_url: str | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Insert":
+    def from_dict(cls, data: dict) -> Insert:
         return cls(
             id=str(data.get("id", "")),
             title=data.get("title", data.get("name", "")),
@@ -181,12 +204,12 @@ class QRCode:
     """A QR code attachment."""
 
     id: str
-    url: Optional[str] = None
-    title: Optional[str] = None
+    url: str | None = None
+    title: str | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "QRCode":
+    def from_dict(cls, data: dict) -> QRCode:
         return cls(
             id=str(data.get("id", "")),
             url=data.get("url"),
@@ -205,8 +228,8 @@ class Recipient:
     city: str
     state: str
     zip: str
-    street2: Optional[str] = None
-    company: Optional[str] = None
+    street2: str | None = None
+    company: str | None = None
     country: str = "US"
 
     def to_dict(self) -> dict:
@@ -236,8 +259,8 @@ class Sender:
     city: str
     state: str
     zip: str
-    street2: Optional[str] = None
-    company: Optional[str] = None
+    street2: str | None = None
+    company: str | None = None
     country: str = "US"
 
     def to_dict(self) -> dict:
@@ -262,16 +285,16 @@ class Order:
     """An order for a handwritten card."""
 
     id: str
-    status: Optional[str] = None
-    message: Optional[str] = None
-    card_id: Optional[str] = None
-    font_id: Optional[str] = None
-    created_at: Optional[str] = None
-    tracking_number: Optional[str] = None
+    status: str | None = None
+    message: str | None = None
+    card_id: str | None = None
+    font_id: str | None = None
+    created_at: str | None = None
+    tracking_number: str | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Order":
+    def from_dict(cls, data: dict) -> Order:
         return cls(
             id=str(data.get("id", data.get("order_id", ""))),
             status=data.get("status"),
@@ -293,11 +316,11 @@ class Dimension:
     format: str
     open_width: str
     open_height: str
-    name: Optional[str] = None
+    name: str | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Dimension":
+    def from_dict(cls, data: dict) -> Dimension:
         return cls(
             id=int(data.get("id", 0)),
             orientation=data.get("orientation", ""),
@@ -317,12 +340,12 @@ class CustomImage:
     """An uploaded image for custom card designs."""
 
     id: int
-    image_url: Optional[str] = None
-    image_type: Optional[str] = None
+    image_url: str | None = None
+    image_type: str | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "CustomImage":
+    def from_dict(cls, data: dict) -> CustomImage:
         return cls(
             id=int(data.get("id", 0)),
             image_url=data.get("src") or data.get("image_url") or data.get("url"),
@@ -336,11 +359,11 @@ class CustomCard:
     """A custom card created from uploaded images."""
 
     card_id: int
-    category_id: Optional[int] = None
+    category_id: int | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "CustomCard":
+    def from_dict(cls, data: dict) -> CustomCard:
         return cls(
             card_id=int(data.get("card_id", data.get("id", 0))),
             category_id=int(data["category_id"]) if data.get("category_id") else None,
@@ -353,19 +376,19 @@ class SavedAddress:
     """A saved address from the user's address book (recipient or sender)."""
 
     id: int
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    company: Optional[str] = None
-    street1: Optional[str] = None
-    street2: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    zip: Optional[str] = None
-    country: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    company: str | None = None
+    street1: str | None = None
+    street2: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip: str | None = None
+    country: str | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "SavedAddress":
+    def from_dict(cls, data: dict) -> SavedAddress:
         return cls(
             id=int(data.get("id", 0)),
             first_name=data.get("first_name"),
@@ -390,11 +413,11 @@ class Signature:
     """A saved handwriting signature."""
 
     id: int
-    preview: Optional[str] = None
+    preview: str | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Signature":
+    def from_dict(cls, data: dict) -> Signature:
         return cls(
             id=int(data.get("id", 0)),
             preview=data.get("preview"),
@@ -410,24 +433,24 @@ class Country:
     name: str
     raw: dict = field(default_factory=dict, repr=False)
     id: int = 0
-    aliases: List[str] = field(default_factory=list)
+    aliases: list[str] = field(default_factory=list)
     delivery_cost: float = 0.0
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Country":
-        cost = data.get("delivery_cost", data.get("deliveryCost", 0))
-        try:
-            cost = float(cost or 0)
-        except (TypeError, ValueError):
-            cost = 0.0
+    def from_dict(cls, data: dict) -> Country:
+        cost = _to_float(data.get("delivery_cost", data.get("deliveryCost")))
+        code = data.get("ups_code")
+        if code is None:
+            code = data.get("code")
         return cls(
-            id=int(data.get("id") or 0),
-            code=data.get("ups_code") if data.get("ups_code") is not None else data.get("code") or "",
+            id=_to_int(data.get("id")),
+            code=str(code) if code is not None else "",
             name=data.get("name", ""),
             aliases=[alias.strip() for alias in (data.get("aliases") or "").split("|") if alias.strip()],
-            delivery_cost=cost,
+            delivery_cost=cost if cost is not None else 0.0,
             raw=data,
         )
+
 
 @dataclass
 class State:
@@ -438,7 +461,7 @@ class State:
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "State":
+    def from_dict(cls, data: dict) -> State:
         return cls(
             code=data.get("code") or data.get("abbreviation") or data.get("short_name") or "",
             name=data.get("name", ""),
@@ -457,12 +480,12 @@ class StampOption:
 
     id: int
     name: str
-    description: Optional[str] = None
-    price: Optional[float] = None
+    description: str | None = None
+    price: float | None = None
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "StampOption":
+    def from_dict(cls, data: dict) -> StampOption:
         price = data.get("price")
         return cls(
             id=int(data.get("id", 0)),

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import click
 
@@ -18,9 +19,9 @@ def output_json_raw(data: Any) -> None:
 
 
 def print_table(
-    rows: Sequence[Dict[str, Any]],
-    columns: List[str],
-    headers: Optional[List[str]] = None,
+    rows: Sequence[dict[str, Any]],
+    columns: list[str],
+    headers: list[str] | None = None,
 ) -> None:
     """Print a simple formatted table to stdout.
 
@@ -40,10 +41,7 @@ def print_table(
     for row in rows:
         cells = []
         for col in columns:
-            if isinstance(row, dict):
-                val = row.get(col, "")
-            else:
-                val = getattr(row, col, "")
+            val = row.get(col, "") if isinstance(row, dict) else getattr(row, col, "")
             cells.append(str(val) if val is not None else "")
         str_rows.append(cells)
 

@@ -7,10 +7,10 @@ the Handwrytten API expects.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 
-def parse_address_string(addr: str) -> Dict[str, str]:
+def parse_address_string(addr: str) -> dict[str, str]:
     """Parse a freeform address string into an API-compatible dict.
 
     Accepted formats:
@@ -29,7 +29,7 @@ def parse_address_string(addr: str) -> Dict[str, str]:
             f"Cannot parse address: expected at least 'Name, Street, City State Zip', got: {addr}"
         )
 
-    result: Dict[str, str] = {}
+    result: dict[str, str] = {}
 
     # First part is always the name
     name_parts = parts[0].split(None, 1)
@@ -76,7 +76,7 @@ def parse_address_string(addr: str) -> Dict[str, str]:
     return result
 
 
-def _extract_city_state_zip(parts: list) -> Optional[Dict[str, Any]]:
+def _extract_city_state_zip(parts: list) -> dict[str, Any] | None:
     """Find the city, state, zip from a list of comma-separated parts.
 
     Handles:
@@ -131,7 +131,7 @@ def _extract_city_state_zip(parts: list) -> Optional[Dict[str, Any]]:
     return None
 
 
-def normalize_csv_row(row: Dict[str, str]) -> Dict[str, str]:
+def normalize_csv_row(row: dict[str, str]) -> dict[str, str]:
     """Normalize a CSV row's column names to the API's expected format.
 
     Handles common variations like first_name → firstName,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 class HandwryttenError(Exception):
@@ -11,8 +11,8 @@ class HandwryttenError(Exception):
     def __init__(
         self,
         message: str = "An error occurred with the Handwrytten API",
-        status_code: Optional[int] = None,
-        response_body: Optional[Any] = None,
+        status_code: int | None = None,
+        response_body: Any | None = None,
     ):
         self.message = message
         self.status_code = status_code
@@ -53,7 +53,7 @@ class RateLimitError(HandwryttenError):
     def __init__(
         self,
         message: str = "Rate limit exceeded. Please retry after a delay.",
-        retry_after: Optional[int] = None,
+        retry_after: int | None = None,
         **kwargs,
     ):
         self.retry_after = retry_after

@@ -10,7 +10,6 @@ from handwrytten.exceptions import HandwryttenError
 @click.group()
 def address():
     """Look up countries and states."""
-    pass
 
 
 @address.command("countries")

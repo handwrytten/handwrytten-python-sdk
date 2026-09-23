@@ -15,18 +15,17 @@ Send real handwritten notes from the command line.
 
 import click
 
-from handwrytten.cli.config import load_api_key
-from handwrytten.cli.commands.send import send
-from handwrytten.cli.commands.cards import cards
-from handwrytten.cli.commands.fonts import fonts
-from handwrytten.cli.commands.orders import orders
-from handwrytten.cli.commands.gift_cards import gift_cards
-from handwrytten.cli.commands.inserts import inserts
 from handwrytten.cli.commands.account import account
 from handwrytten.cli.commands.address import address
+from handwrytten.cli.commands.cards import cards
+from handwrytten.cli.commands.fonts import fonts
+from handwrytten.cli.commands.gift_cards import gift_cards
+from handwrytten.cli.commands.inserts import inserts
+from handwrytten.cli.commands.orders import orders
+from handwrytten.cli.commands.send import send
+from handwrytten.cli.config import load_api_key
 
-
-CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)

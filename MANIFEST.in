@@ -1,0 +1,3 @@
+include CHANGELOG.md
+include SDK-PARITY.md
+recursive-include tests *.py *.json

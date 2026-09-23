@@ -2,7 +2,7 @@
 
 import click
 
-from handwrytten.cli.config import get_client, save_api_key, CONFIG_FILE
+from handwrytten.cli.config import CONFIG_FILE, get_client, save_api_key
 from handwrytten.cli.output import error, output_json_raw, success
 from handwrytten.exceptions import HandwryttenError
 
@@ -10,7 +10,6 @@ from handwrytten.exceptions import HandwryttenError
 @click.group()
 def account():
     """Manage your Handwrytten account and credentials."""
-    pass
 
 
 @account.command("login")

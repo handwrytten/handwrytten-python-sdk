@@ -458,8 +458,9 @@ class TestOrders:
         """Mixing saved IDs and full addresses is rejected up front."""
         import pytest
 
-        with responses.RequestsMock():
-            with pytest.raises(ValueError, match="all saved-address IDs .* or all full"):
+        with responses.RequestsMock(), pytest.raises(
+            ValueError, match="all saved-address IDs .* or all full"
+        ):
                 client.orders.send(
                     card_id="100",
                     font="hwDavid",
@@ -722,8 +723,7 @@ class TestOrders:
 
     def test_send_invalid_recipient_type_raises(self, client):
         import pytest
-        with responses.RequestsMock() as rsps:
-            with pytest.raises(TypeError, match="Each recipient must be"):
+        with responses.RequestsMock(), pytest.raises(TypeError, match="Each recipient must be"):
                 client.orders.send(
                     card_id="100",
                     font="hwDavid",
@@ -811,8 +811,9 @@ class TestBasket:
     def test_add_order_rejects_both_addresses_and_address_ids(self, client):
         import pytest
 
-        with responses.RequestsMock():
-            with pytest.raises(ValueError, match="either addresses .* or address_ids"):
+        with responses.RequestsMock(), pytest.raises(
+            ValueError, match="either addresses .* or address_ids"
+        ):
                 client.basket.add_order(
                     card_id="100",
                     addresses=[{"to_first_name": "Jane", "to_last_name": "Doe"}],

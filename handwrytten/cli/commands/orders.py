@@ -10,7 +10,6 @@ from handwrytten.exceptions import HandwryttenError
 @click.group()
 def orders():
     """View and manage orders."""
-    pass
 
 
 @orders.command("list")

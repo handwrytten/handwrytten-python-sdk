@@ -6,7 +6,6 @@ import csv
 import io
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
 
 import click
 
@@ -183,7 +182,7 @@ def _resolve_message(message: str | None, message_file: str | None) -> str | Non
 def _resolve_recipients(
     to_address: str | None,
     from_csv: str | None,
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     """Build recipient list from --to or --from-csv."""
     recipients = []
 
@@ -191,7 +190,7 @@ def _resolve_recipients(
         try:
             recipients.append(parse_address_string(to_address))
         except ValueError as e:
-            raise click.ClickException(f"Cannot parse --to address: {e}")
+            raise click.ClickException(f"Cannot parse --to address: {e}") from e
 
     if from_csv:
         csv_path = Path(from_csv)
@@ -210,12 +209,12 @@ def _resolve_recipients(
                         raise ValueError(f"Missing required field '{field}'")
                 recipients.append(normalized)
             except ValueError as e:
-                raise click.ClickException(f"CSV row {row_num}: {e}")
+                raise click.ClickException(f"CSV row {row_num}: {e}") from e
 
     return recipients
 
 
-def _personalize(message: str, recipient: Dict[str, str]) -> str:
+def _personalize(message: str, recipient: dict[str, str]) -> str:
     """Replace {{field}} placeholders with recipient values."""
     result = message
     for key, value in recipient.items():
@@ -224,11 +223,11 @@ def _personalize(message: str, recipient: Dict[str, str]) -> str:
 
 
 def _print_dry_run(
-    recipients: List[Dict[str, str]],
+    recipients: list[dict[str, str]],
     message: str,
     card_id: str,
     font_id: str,
-    sender: Dict[str, str] | None,
+    sender: dict[str, str] | None,
     output_json: bool,
 ) -> None:
     """Show what would be sent in dry-run mode."""

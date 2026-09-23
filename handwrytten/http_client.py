@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import urljoin
 
 import requests
 
+from handwrytten._version import __version__
 from handwrytten.exceptions import (
     AuthenticationError,
     BadRequestError,
@@ -32,12 +33,12 @@ class HttpClient:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        access_token: Optional[str] = None,
+        api_key: str | None = None,
+        access_token: str | None = None,
         base_url: str = DEFAULT_BASE_URL,
         timeout: int = DEFAULT_TIMEOUT,
         max_retries: int = MAX_RETRIES,
-        session: Optional[requests.Session] = None,
+        session: requests.Session | None = None,
     ):
         self.api_key = api_key
         self.access_token = access_token
@@ -55,7 +56,7 @@ class HttpClient:
                 "Accept": "application/json",
                 "Content-Type": "application/json",
                 "Authorization": auth_header,
-                "User-Agent": "handwrytten-python/1.4.0",
+                "User-Agent": f"handwrytten-python/{__version__}",
             }
         )
 
@@ -63,9 +64,9 @@ class HttpClient:
         self,
         method: str,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json_body: Optional[Dict[str, Any]] = None,
-        idempotency_key: Optional[str] = None,
+        params: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
+        idempotency_key: str | None = None,
     ) -> Any:
         """Make an HTTP request with automatic retries and error handling.
 
@@ -88,7 +89,7 @@ class HttpClient:
         if idempotency_key:
             headers["Idempotency-Key"] = idempotency_key
 
-        last_error = None
+        last_error: HandwryttenError | None = None
 
         for attempt in range(self.max_retries):
             try:
@@ -143,7 +144,7 @@ class HttpClient:
                     )
                     time.sleep(wait)
                 else:
-                    raise last_error
+                    raise last_error from e
 
             except requests.exceptions.Timeout as e:
                 last_error = HandwryttenError(
@@ -153,9 +154,11 @@ class HttpClient:
                     wait = RETRY_BACKOFF * (2**attempt)
                     time.sleep(wait)
                 else:
-                    raise last_error
+                    raise last_error from e
 
-        raise last_error  # type: ignore[misc]
+        if last_error is None:  # pragma: no cover - loop always sets or raises
+            last_error = HandwryttenError("Request failed without a response")
+        raise last_error
 
     def _handle_response(self, response: requests.Response) -> Any:
         """Parse response and raise appropriate exceptions for error codes."""
@@ -224,14 +227,14 @@ class HttpClient:
             return body[:200]
         return default
 
-    def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         return self.request("GET", path, params=params)
 
     def post(
         self,
         path: str,
-        json_body: Optional[Dict[str, Any]] = None,
-        idempotency_key: Optional[str] = None,
+        json_body: dict[str, Any] | None = None,
+        idempotency_key: str | None = None,
     ) -> Any:
         return self.request(
             "POST", path, json_body=json_body, idempotency_key=idempotency_key
@@ -240,8 +243,8 @@ class HttpClient:
     def post_multipart(
         self,
         path: str,
-        files: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
+        files: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
     ) -> Any:
         """POST with multipart/form-data encoding (for file uploads).
 
@@ -253,7 +256,7 @@ class HttpClient:
         """
         url = urljoin(self.base_url, path.lstrip("/"))
         # Let requests set the multipart Content-Type with boundary
-        headers = {"Content-Type": None}
+        headers: dict[str, Any] = {"Content-Type": None}
 
         # requests consumes file streams when preparing each attempt. Buffer
         # once so retries send the same bytes, including non-seekable streams.
@@ -269,7 +272,7 @@ class HttpClient:
             else:
                 upload_files[key] = value
 
-        last_error = None
+        last_error: HandwryttenError | None = None
         for attempt in range(self.max_retries):
             try:
                 logger.debug(
@@ -306,21 +309,23 @@ class HttpClient:
                 if attempt < self.max_retries - 1:
                     time.sleep(RETRY_BACKOFF * (2**attempt))
                 else:
-                    raise last_error
+                    raise last_error from e
 
-            except requests.exceptions.Timeout:
+            except requests.exceptions.Timeout as e:
                 last_error = HandwryttenError(
                     f"Request timed out after {self.timeout}s", status_code=None
                 )
                 if attempt < self.max_retries - 1:
                     time.sleep(RETRY_BACKOFF * (2**attempt))
                 else:
-                    raise last_error
+                    raise last_error from e
 
-        raise last_error  # type: ignore[misc]
+        if last_error is None:  # pragma: no cover - loop always sets or raises
+            last_error = HandwryttenError("Request failed without a response")
+        raise last_error
 
-    def put(self, path: str, json_body: Optional[Dict[str, Any]] = None) -> Any:
+    def put(self, path: str, json_body: dict[str, Any] | None = None) -> Any:
         return self.request("PUT", path, json_body=json_body)
 
-    def delete(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def delete(self, path: str, params: dict[str, Any] | None = None) -> Any:
         return self.request("DELETE", path, params=params)
