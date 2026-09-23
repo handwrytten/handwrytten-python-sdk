@@ -44,8 +44,8 @@ class TestCards:
 
     def test_get_returns_single_card(self, client, mock_api):
         mock_api.get(
-            BASE + "cards/get/42",
-            json={"id": 42, "title": "Holiday", "cover": "https://img.com/holiday.jpg"},
+            BASE + "cards/view?card_id=42",
+            json={"status": "ok", "card": {"id": 42, "title": "Holiday", "cover": "https://img.com/holiday.jpg"}},
         )
 
         card = client.cards.get("42")
@@ -66,7 +66,7 @@ class TestCards:
 
     def test_categories(self, client, mock_api):
         mock_api.get(
-            BASE + "cards/categories",
+            BASE + "categories/list",
             json=[{"id": 1, "name": "Greeting"}, {"id": 2, "name": "Holiday"}],
         )
 
@@ -76,7 +76,7 @@ class TestCards:
         assert cats[0]["name"] == "Greeting"
 
     def test_categories_non_list_response(self, client, mock_api):
-        mock_api.get(BASE + "cards/categories", json={"error": "unexpected"})
+        mock_api.get(BASE + "categories/list", json={"error": "unexpected"})
 
         cats = client.cards.categories()
 
@@ -1013,11 +1013,11 @@ class TestAddressBook:
 
     def test_states(self, client, mock_api):
         mock_api.get(
-            BASE + "states/list",
-            json=[
-                {"abbreviation": "AZ", "name": "Arizona"},
-                {"abbreviation": "CA", "name": "California"},
-            ],
+            BASE + "countries/list",
+            json={"countries": [{"ups_code": "US", "states": [
+                {"short_name": "AZ", "name": "Arizona"},
+                {"short_name": "CA", "name": "California"},
+            ]}]},
         )
 
         states = client.address_book.states("US")

@@ -26,7 +26,7 @@ class User:
             first_name=data.get("first_name") or data.get("firstName"),
             last_name=data.get("last_name") or data.get("lastName"),
             company=data.get("company"),
-            credits=data.get("credits"),
+            credits=float(data["credits"]) if data.get("credits") is not None else None,
             raw=data,
         )
 
@@ -107,6 +107,9 @@ class GiftCard:
 
     @classmethod
     def from_dict(cls, data: dict) -> "GiftCard":
+        amount = data.get("amount")
+        if amount is None:
+            amount = data.get("value")
         denoms_raw = data.get("denominations", [])
         denoms = (
             [Denomination.from_dict(d) for d in denoms_raw]
@@ -116,7 +119,7 @@ class GiftCard:
         return cls(
             id=str(data.get("id", "")),
             title=data.get("title", data.get("name", "")),
-            amount=data.get("amount") or data.get("value"),
+            amount=float(amount) if amount is not None else None,
             image_url=data.get("image_url") or data.get("image"),
             denominations=denoms,
             raw=data,
@@ -168,6 +171,9 @@ class DeliveryConfirmation:
     NONE = 0
     CONFIRMATION = 1
     CASS_ONLY = 2
+    # Aliases shared with the JavaScript SDK; existing names remain supported.
+    DELIVERY_CONFIRMATION = CONFIRMATION
+    CASS_VALIDATION = CASS_ONLY
 
 
 @dataclass
@@ -398,20 +404,30 @@ class Signature:
 
 @dataclass
 class Country:
-    """A supported country."""
+    """A supported country, including postage and alternate names."""
 
     code: str
     name: str
     raw: dict = field(default_factory=dict, repr=False)
+    id: int = 0
+    aliases: List[str] = field(default_factory=list)
+    delivery_cost: float = 0.0
 
     @classmethod
     def from_dict(cls, data: dict) -> "Country":
+        cost = data.get("delivery_cost", data.get("deliveryCost", 0))
+        try:
+            cost = float(cost or 0)
+        except (TypeError, ValueError):
+            cost = 0.0
         return cls(
-            code=data.get("code", data.get("id", "")),
+            id=int(data.get("id") or 0),
+            code=data.get("ups_code") if data.get("ups_code") is not None else data.get("code") or "",
             name=data.get("name", ""),
+            aliases=[alias.strip() for alias in (data.get("aliases") or "").split("|") if alias.strip()],
+            delivery_cost=cost,
             raw=data,
         )
-
 
 @dataclass
 class State:
@@ -424,7 +440,7 @@ class State:
     @classmethod
     def from_dict(cls, data: dict) -> "State":
         return cls(
-            code=data.get("code", data.get("abbreviation", "")),
+            code=data.get("code") or data.get("abbreviation") or data.get("short_name") or "",
             name=data.get("name", ""),
             raw=data,
         )

@@ -72,7 +72,7 @@ class TestErrorHandling:
             )
 
     def test_404_raises_not_found(self, client, mock_api):
-        mock_api.get(BASE + "cards/get/999", json={"message": "Not found"}, status=404)
+        mock_api.get(BASE + "cards/view?card_id=999", json={"message": "Not found"}, status=404)
 
         with pytest.raises(NotFoundError):
             client.cards.get("999")

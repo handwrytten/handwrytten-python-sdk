@@ -255,6 +255,20 @@ class HttpClient:
         # Let requests set the multipart Content-Type with boundary
         headers = {"Content-Type": None}
 
+        # requests consumes file streams when preparing each attempt. Buffer
+        # once so retries send the same bytes, including non-seekable streams.
+        upload_files = {}
+        for key, value in (files or {}).items():
+            if isinstance(value, (tuple, list)):
+                parts = list(value)
+                if hasattr(parts[1], "read"):
+                    parts[1] = parts[1].read()
+                upload_files[key] = tuple(parts)
+            elif hasattr(value, "read"):
+                upload_files[key] = (getattr(value, "name", key), value.read())
+            else:
+                upload_files[key] = value
+
         last_error = None
         for attempt in range(self.max_retries):
             try:
@@ -268,7 +282,7 @@ class HttpClient:
                 response = self.session.request(
                     method="POST",
                     url=url,
-                    files=files,
+                    files=upload_files or None,
                     data=data,
                     headers=headers,
                     timeout=self.timeout,

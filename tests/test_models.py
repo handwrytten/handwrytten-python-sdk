@@ -427,9 +427,10 @@ class TestCountry:
         assert c.code == "US"
         assert c.name == "United States"
 
-    def test_code_from_id(self):
-        c = Country.from_dict({"id": "CA", "name": "Canada"})
+    def test_code_from_ups_code(self):
+        c = Country.from_dict({"id": 2, "ups_code": "CA", "name": "Canada"})
         assert c.code == "CA"
+        assert c.id == 2
 
 
 class TestState:

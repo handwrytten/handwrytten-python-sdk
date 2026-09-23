@@ -5,6 +5,22 @@ All notable changes to the Handwrytten Python SDK will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Preserve zero gift-card amounts and normalize numeric-string amounts and user credits to numbers, matching JavaScript.
+- Preserve file contents across multipart upload retries.
+- Add `DELIVERY_CONFIRMATION` and `CASS_VALIDATION` aliases shared with JavaScript.
+- Expand shared regression fixtures to cover all 12 resources / 44 public methods and numeric response fields.
+- Fix country-list envelope parsing and replace the nonexistent states endpoint with the selected country’s nested states.
+- Fix card lookup endpoint and response unwrapping, retaining card dimensions.
+- Fix category lookup endpoint/envelope while retaining dictionary results.
+- Correct country codes and expose country ID, aliases and delivery cost.
+- Support snake_case stamp envelopes, preserve QR raw responses, and avoid mutating basket inputs.
+
+See [SDK-PARITY.md](SDK-PARITY.md) for the cross-SDK review and validation scope.
+
 ## [1.4.0] - 2026-04-22
 
 ### Added

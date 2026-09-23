@@ -1,0 +1,198 @@
+{
+  "card": {
+    "id": 100,
+    "name": "Test card",
+    "closed_width": 5.5,
+    "closed_height": 4.25,
+    "preview_margin_top": 0,
+    "preview_margin_right": "0.300",
+    "preview_margin_bottom": "0.300",
+    "preview_margin_left": "0.300"
+  },
+  "category": {
+    "id": 462,
+    "name": "Anniversary",
+    "slug": "anniversary",
+    "taxonomy": "NONE",
+    "meta_title": "Anniversary cards",
+    "meta_description": "Celebrate",
+    "checked": 0,
+    "icon": "https://example.com/icon.png"
+  },
+  "country": {
+    "id": 1,
+    "ups_code": "US",
+    "name": "United States",
+    "aliases": "| USA |U.S.A.|US||",
+    "delivery_cost": "0.78",
+    "states": [
+      {
+        "id": 4,
+        "name": "Arizona",
+        "short_name": "AZ"
+      }
+    ]
+  },
+  "stamp": {
+    "id": 2,
+    "label": "Presorted",
+    "price": "0.5"
+  },
+  "inline": {
+    "to_first_name": "Jane",
+    "to_last_name": "Doe",
+    "to_address1": "123 Main",
+    "to_city": "Phoenix",
+    "to_state": "AZ",
+    "to_zip": "85001"
+  },
+  "saved_order": {
+    "card_id": 100,
+    "font": "hwDavid",
+    "message": "Hello",
+    "wishes": "Best",
+    "address_ids": [
+      1,
+      2
+    ],
+    "return_address_id": 99,
+    "delivery_confirmation": 2,
+    "stamp_option_id": 2
+  },
+  "resource_methods": {
+    "AuthResource": [
+      "get_user",
+      "login",
+      "list_signatures"
+    ],
+    "CardsResource": [
+      "list",
+      "get",
+      "categories"
+    ],
+    "CustomCardsResource": [
+      "dimensions",
+      "upload_image",
+      "check_image",
+      "list_images",
+      "delete_image",
+      "create",
+      "get",
+      "delete"
+    ],
+    "FontsResource": [
+      "list",
+      "list_for_customizer"
+    ],
+    "GiftCardsResource": [
+      "list"
+    ],
+    "InsertsResource": [
+      "list"
+    ],
+    "QRCodesResource": [
+      "list",
+      "create",
+      "delete",
+      "frames"
+    ],
+    "AddressBookResource": [
+      "list_recipients",
+      "add_recipient",
+      "update_recipient",
+      "delete_recipient",
+      "list_senders",
+      "add_sender",
+      "delete_sender",
+      "countries",
+      "states"
+    ],
+    "BasketResource": [
+      "add_order",
+      "remove",
+      "clear",
+      "list",
+      "get_item",
+      "count",
+      "send"
+    ],
+    "ProspectingResource": [
+      "calculate_targets"
+    ],
+    "ShippingResource": [
+      "stamp_options"
+    ],
+    "OrdersResource": [
+      "send",
+      "get",
+      "list",
+      "list_past_baskets"
+    ]
+  },
+  "numeric_models": [
+    {
+      "model": "User",
+      "raw": {
+        "id": 1,
+        "credits": "12.50"
+      },
+      "field": "credits",
+      "expected": 12.5
+    },
+    {
+      "model": "User",
+      "raw": {
+        "id": 1,
+        "credits": 0
+      },
+      "field": "credits",
+      "expected": 0
+    },
+    {
+      "model": "User",
+      "raw": {
+        "id": 1,
+        "credits": null
+      },
+      "field": "credits",
+      "expected": null
+    },
+    {
+      "model": "GiftCard",
+      "raw": {
+        "id": 1,
+        "amount": 0,
+        "value": 25
+      },
+      "field": "amount",
+      "expected": 0
+    },
+    {
+      "model": "GiftCard",
+      "raw": {
+        "id": 1,
+        "amount": "10.50"
+      },
+      "field": "amount",
+      "expected": 10.5
+    },
+    {
+      "model": "GiftCard",
+      "raw": {
+        "id": 1,
+        "amount": null,
+        "value": "25"
+      },
+      "field": "amount",
+      "expected": 25
+    },
+    {
+      "model": "GiftCard",
+      "raw": {
+        "id": 1
+      },
+      "field": "amount",
+      "expected": null
+    }
+  ]
+}

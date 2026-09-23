@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Union
 
 from handwrytten.http_client import HttpClient
+from handwrytten.exceptions import HandwryttenError
 from handwrytten.models import (
     Card,
     Country,
@@ -112,8 +113,11 @@ class CardsResource:
         Returns:
             Card object.
         """
-        data = self._http.get(f"cards/get/{card_id}")
-        return Card.from_dict(data if isinstance(data, dict) else {})
+        data = self._http.get("cards/view", params={"card_id": card_id})
+        card = data.get("card") if isinstance(data, dict) else None
+        if not isinstance(card, dict) or card.get("id") is None or str(card["id"]) != str(card_id):
+            raise HandwryttenError("Card lookup returned no matching card.", response_body=data)
+        return Card.from_dict(card)
 
     def categories(self) -> List[Dict[str, Any]]:
         """Get available card categories.
@@ -121,7 +125,9 @@ class CardsResource:
         Returns:
             List of category dicts.
         """
-        data = self._http.get("cards/categories")
+        data = self._http.get("categories/list")
+        if isinstance(data, dict):
+            return data.get("results") or data.get("categories") or []
         return data if isinstance(data, list) else []
 
 
@@ -670,7 +676,7 @@ class QRCodesResource:
         if isinstance(data, dict):
             # Response may have id at top level or nested
             if "id" in data and "url" not in data:
-                return QRCode(id=str(data["id"]), url=url, title=name)
+                return QRCode(id=str(data["id"]), url=url, title=name, raw=data)
             return QRCode.from_dict(data)
         return QRCode(id="0", url=url, title=name)
 
@@ -1050,7 +1056,8 @@ class AddressBookResource:
             List of Country objects.
         """
         data = self._http.get("countries/list")
-        items = data if isinstance(data, list) else data.get("results", [])
+        items = (data if isinstance(data, list) else
+                 (data.get("countries") or data.get("results") or []) if isinstance(data, dict) else [])
         return [Country.from_dict(c) for c in items]
 
     def states(self, country_code: str = "US") -> List[State]:
@@ -1062,9 +1069,9 @@ class AddressBookResource:
         Returns:
             List of State objects.
         """
-        data = self._http.get("states/list", params={"country": country_code})
-        items = data if isinstance(data, list) else data.get("results", [])
-        return [State.from_dict(s) for s in items]
+        country = next((c for c in self.countries() if c.code.upper() == country_code.upper()), None)
+        items = country.raw.get("states", []) if country else []
+        return [State.from_dict(s) for s in items] if isinstance(items, list) else []
 
 
 # ---------------------------------------------------------------------------
@@ -1204,7 +1211,7 @@ class BasketResource:
             converted: List[Dict[str, Any]] = []
             for addr in addresses:
                 if any(k.startswith("to_") for k in addr) or "address_id" in addr:
-                    converted.append(addr)
+                    converted.append(dict(addr))
                 else:
                     addr = dict(addr)
                     row_message = addr.pop("message", None)
@@ -1465,7 +1472,8 @@ class ShippingResource:
         """
         data = self._http.get("shipping/stampOptions")
         if isinstance(data, dict):
-            items = data.get("stampOptions", data.get("options", data.get("results", [])))
+            items = (data.get("stamp_options") or data.get("stampOptions")
+                     or data.get("options") or data.get("results") or [])
         elif isinstance(data, list):
             items = data
         else:
