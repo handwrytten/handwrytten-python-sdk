@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+import builtins
+from typing import Any
 
+from handwrytten.exceptions import HandwryttenError
 from handwrytten.http_client import HttpClient
 from handwrytten.models import (
     Card,
@@ -25,7 +27,6 @@ from handwrytten.models import (
     User,
 )
 
-
 # ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
@@ -45,7 +46,7 @@ class AuthResource:
         data = self._http.get("auth/getUser")
         return User.from_dict(data if isinstance(data, dict) else {})
 
-    def login(self, email: str, password: str) -> Dict[str, Any]:
+    def login(self, email: str, password: str) -> dict[str, Any]:
         """Authenticate with email/password and retrieve a UID.
 
         Most integrations should use an API key instead.
@@ -62,7 +63,7 @@ class AuthResource:
             json_body={"login": email, "password": password},
         )
 
-    def list_signatures(self) -> List[Signature]:
+    def list_signatures(self) -> list[Signature]:
         """Get the user's saved handwriting signatures.
 
         Returns:
@@ -88,7 +89,7 @@ class CardsResource:
     def __init__(self, http: HttpClient):
         self._http = http
 
-    def list(self) -> List[Card]:
+    def list(self) -> builtins.list[Card]:
         """Get all available card templates.
 
         Returns:
@@ -112,16 +113,21 @@ class CardsResource:
         Returns:
             Card object.
         """
-        data = self._http.get(f"cards/get/{card_id}")
-        return Card.from_dict(data if isinstance(data, dict) else {})
+        data = self._http.get("cards/view", params={"card_id": card_id})
+        card = data.get("card") if isinstance(data, dict) else None
+        if not isinstance(card, dict) or card.get("id") is None or str(card["id"]) != str(card_id):
+            raise HandwryttenError("Card lookup returned no matching card.", response_body=data)
+        return Card.from_dict(card)
 
-    def categories(self) -> List[Dict[str, Any]]:
+    def categories(self) -> builtins.list[dict[str, Any]]:
         """Get available card categories.
 
         Returns:
             List of category dicts.
         """
-        data = self._http.get("cards/categories")
+        data = self._http.get("categories/list")
+        if isinstance(data, dict):
+            return data.get("results") or data.get("categories") or []
         return data if isinstance(data, list) else []
 
 
@@ -169,9 +175,9 @@ class CustomCardsResource:
 
     def dimensions(
         self,
-        format: Optional[str] = None,
-        orientation: Optional[str] = None,
-    ) -> List[Dimension]:
+        format: str | None = None,
+        orientation: str | None = None,
+    ) -> list[Dimension]:
         """Get customizable card dimensions.
 
         Use these dimension IDs when creating custom cards with ``create()``.
@@ -190,7 +196,7 @@ class CustomCardsResource:
         """
         data = self._http.get("design/dimensions")
         if isinstance(data, dict):
-            items = data.get("dimensions", data.get("results", []))
+            items = data.get("dimensions") or data.get("results") or []
         elif isinstance(data, list):
             items = data
         else:
@@ -208,8 +214,8 @@ class CustomCardsResource:
     def upload_image(
         self,
         *,
-        url: Optional[str] = None,
-        file_path: Optional[str] = None,
+        url: str | None = None,
+        file_path: str | None = None,
         image_type: str = "logo",
     ) -> CustomImage:
         """Upload a custom image for use with custom cards.
@@ -227,13 +233,10 @@ class CustomCardsResource:
         """
         if url and file_path:
             raise ValueError("Provide either url or file_path, not both")
-        if not url and not file_path:
-            raise ValueError("Provide either url or file_path")
-
         if url:
-            body: Dict[str, Any] = {"url": url, "type": image_type}
+            body: dict[str, Any] = {"url": url, "type": image_type}
             data = self._http.post("cards/uploadCustomLogo", json_body=body)
-        else:
+        elif file_path:
             # File upload via multipart/form-data
             import mimetypes
             mime = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
@@ -243,11 +246,13 @@ class CustomCardsResource:
                     files={"file": (file_path.rsplit("/", 1)[-1].rsplit("\\", 1)[-1], f, mime)},
                     data={"type": image_type},
                 )
+        else:
+            raise ValueError("Provide either url or file_path")
         return CustomImage.from_dict(data if isinstance(data, dict) else {})
 
     def check_image(
-        self, image_id: int, card_id: Optional[int] = None
-    ) -> Dict[str, Any]:
+        self, image_id: int, card_id: int | None = None
+    ) -> dict[str, Any]:
         """Check if an uploaded image meets quality requirements.
 
         Args:
@@ -257,14 +262,14 @@ class CustomCardsResource:
         Returns:
             Dict with ``status``, optional ``warning``, and optional ``error``.
         """
-        body: Dict[str, Any] = {"image_id": image_id}
+        body: dict[str, Any] = {"image_id": image_id}
         if card_id is not None:
             body["card_id"] = card_id
         return self._http.post("cards/checkUploadedCustomLogo", json_body=body)
 
     def list_images(
-        self, image_type: Optional[str] = None
-    ) -> List[CustomImage]:
+        self, image_type: str | None = None
+    ) -> list[CustomImage]:
         """List previously uploaded custom images.
 
         Args:
@@ -274,7 +279,7 @@ class CustomCardsResource:
         Returns:
             List of CustomImage objects.
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if image_type is not None:
             params["type"] = image_type
         data = self._http.get("cards/listCustomUserImages", params=params)
@@ -286,7 +291,7 @@ class CustomCardsResource:
             items = []
         return [CustomImage.from_dict(img) for img in items]
 
-    def delete_image(self, image_id: int) -> Dict[str, Any]:
+    def delete_image(self, image_id: int) -> dict[str, Any]:
         """Delete an uploaded custom image.
 
         Args:
@@ -303,56 +308,56 @@ class CustomCardsResource:
         name: str,
         dimension_id: str,
         *,
-        is_update: Optional[bool] = None,
+        is_update: bool | None = None,
         # Cover (front)
-        cover_id: Optional[int] = None,
-        preset_cover_id: Optional[int] = None,
-        cover_size_percent: Optional[int] = None,
+        cover_id: int | None = None,
+        preset_cover_id: int | None = None,
+        cover_size_percent: int | None = None,
         # Header (writing side — top area)
-        header_type: Optional[str] = None,
-        header_text: Optional[str] = None,
-        header_font_id: Optional[str] = None,
-        header_font_size: Optional[int] = None,
-        header_font_color: Optional[str] = None,
-        header_align: Optional[str] = None,
-        header_logo_id: Optional[int] = None,
-        header_logo_size_percent: Optional[int] = None,
+        header_type: str | None = None,
+        header_text: str | None = None,
+        header_font_id: str | None = None,
+        header_font_size: int | None = None,
+        header_font_color: str | None = None,
+        header_align: str | None = None,
+        header_logo_id: int | None = None,
+        header_logo_size_percent: int | None = None,
         # Main (writing side — center, folded cards only)
-        main_type: Optional[str] = None,
-        main_text: Optional[str] = None,
-        main_font_id: Optional[str] = None,
-        main_font_size: Optional[int] = None,
-        main_font_color: Optional[str] = None,
-        main_align: Optional[str] = None,
-        main_logo_id: Optional[int] = None,
-        main_logo_size_percent: Optional[int] = None,
+        main_type: str | None = None,
+        main_text: str | None = None,
+        main_font_id: str | None = None,
+        main_font_size: int | None = None,
+        main_font_color: str | None = None,
+        main_align: str | None = None,
+        main_logo_id: int | None = None,
+        main_logo_size_percent: int | None = None,
         # Footer (writing side — bottom area)
-        footer_type: Optional[str] = None,
-        footer_text: Optional[str] = None,
-        footer_font_id: Optional[str] = None,
-        footer_font_size: Optional[int] = None,
-        footer_font_color: Optional[str] = None,
-        footer_align: Optional[str] = None,
-        footer_logo_id: Optional[int] = None,
-        footer_logo_size_percent: Optional[int] = None,
+        footer_type: str | None = None,
+        footer_text: str | None = None,
+        footer_font_id: str | None = None,
+        footer_font_size: int | None = None,
+        footer_font_color: str | None = None,
+        footer_align: str | None = None,
+        footer_logo_id: int | None = None,
+        footer_logo_size_percent: int | None = None,
         # Back
-        back_cover_id: Optional[int] = None,
-        preset_back_cover_id: Optional[int] = None,
-        back_type: Optional[str] = None,
-        back_align: Optional[str] = None,
-        back_vertical_align: Optional[str] = None,
-        back_logo_id: Optional[int] = None,
-        back_text: Optional[str] = None,
-        back_font_id: Optional[int] = None,
-        back_font_size: Optional[int] = None,
-        back_font_color: Optional[str] = None,
-        back_size_percent: Optional[int] = None,
+        back_cover_id: int | None = None,
+        preset_back_cover_id: int | None = None,
+        back_type: str | None = None,
+        back_align: str | None = None,
+        back_vertical_align: str | None = None,
+        back_logo_id: int | None = None,
+        back_text: str | None = None,
+        back_font_id: int | None = None,
+        back_font_size: int | None = None,
+        back_font_color: str | None = None,
+        back_size_percent: int | None = None,
         # QR Code
-        qr_code_id: Optional[int] = None,
-        qr_code_size_percent: Optional[int] = None,
-        qr_code_align: Optional[str] = None,
-        qr_code_location: Optional[str] = None,
-        qr_code_frame_id: Optional[int] = None,
+        qr_code_id: int | None = None,
+        qr_code_size_percent: int | None = None,
+        qr_code_align: str | None = None,
+        qr_code_location: str | None = None,
+        qr_code_frame_id: int | None = None,
         **extra: Any,
     ) -> CustomCard:
         """Create a custom card from uploaded images and text.
@@ -413,7 +418,7 @@ class CustomCardsResource:
         Returns:
             CustomCard with ``card_id`` of the newly created card.
         """
-        body: Dict[str, Any] = {"name": name, "dimension_id": dimension_id}
+        body: dict[str, Any] = {"name": name, "dimension_id": dimension_id}
 
         if is_update is not None:
             body["is_update"] = is_update
@@ -482,7 +487,7 @@ class CustomCardsResource:
         data = self._http.get("design/getCustomCard", params={"id": card_id})
         return CustomCard.from_dict(data if isinstance(data, dict) else {})
 
-    def delete(self, card_id: int) -> Dict[str, Any]:
+    def delete(self, card_id: int) -> dict[str, Any]:
         """Delete a custom card.
 
         Args:
@@ -503,7 +508,7 @@ class FontsResource:
     def __init__(self, http: HttpClient):
         self._http = http
 
-    def list(self) -> List[Font]:
+    def list(self) -> builtins.list[Font]:
         """Get all available handwriting fonts.
 
         Returns:
@@ -518,7 +523,7 @@ class FontsResource:
         items = data if isinstance(data, list) else data.get("results", data.get("fonts", []))
         return [Font.from_dict(f) for f in items]
 
-    def list_for_customizer(self) -> List[Dict[str, Any]]:
+    def list_for_customizer(self) -> builtins.list[dict[str, Any]]:
         """Get fonts available for the card customizer.
 
         These are printed/typeset fonts used in custom card design
@@ -550,7 +555,7 @@ class GiftCardsResource:
     def __init__(self, http: HttpClient):
         self._http = http
 
-    def list(self) -> List[GiftCard]:
+    def list(self) -> builtins.list[GiftCard]:
         """Get all available gift card products.
 
         Each GiftCard includes a ``denominations`` list with available
@@ -574,7 +579,7 @@ class InsertsResource:
     def __init__(self, http: HttpClient):
         self._http = http
 
-    def list(self, include_historical: bool = False) -> List[Insert]:
+    def list(self, include_historical: bool = False) -> builtins.list[Insert]:
         """Get all available inserts.
 
         Args:
@@ -584,7 +589,7 @@ class InsertsResource:
         Returns:
             List of Insert objects.
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if include_historical:
             params["include_historical"] = 1
         data = self._http.get("inserts/list", params=params)
@@ -620,7 +625,7 @@ class QRCodesResource:
     def __init__(self, http: HttpClient):
         self._http = http
 
-    def list(self) -> List[QRCode]:
+    def list(self) -> builtins.list[QRCode]:
         """Get all QR codes associated with your account.
 
         Returns:
@@ -628,7 +633,7 @@ class QRCodesResource:
         """
         data = self._http.get("qrCodes/list")
         if isinstance(data, dict):
-            items = data.get("list", data.get("results", []))
+            items = data.get("list") or data.get("results") or []
         elif isinstance(data, list):
             items = data
         else:
@@ -639,8 +644,8 @@ class QRCodesResource:
         self,
         name: str,
         url: str,
-        icon_id: Optional[int] = None,
-        webhook_url: Optional[str] = None,
+        icon_id: int | None = None,
+        webhook_url: str | None = None,
     ) -> QRCode:
         """Create a new QR code.
 
@@ -660,7 +665,7 @@ class QRCodesResource:
             ... )
             >>> print(qr.id)
         """
-        body: Dict[str, Any] = {"name": name, "url": url}
+        body: dict[str, Any] = {"name": name, "url": url}
         if icon_id is not None:
             body["icon_id"] = icon_id
         if webhook_url is not None:
@@ -670,11 +675,11 @@ class QRCodesResource:
         if isinstance(data, dict):
             # Response may have id at top level or nested
             if "id" in data and "url" not in data:
-                return QRCode(id=str(data["id"]), url=url, title=name)
+                return QRCode(id=str(data["id"]), url=url, title=name, raw=data)
             return QRCode.from_dict(data)
         return QRCode(id="0", url=url, title=name)
 
-    def delete(self, qr_code_id: int) -> Dict[str, Any]:
+    def delete(self, qr_code_id: int) -> dict[str, Any]:
         """Delete a QR code.
 
         Args:
@@ -682,7 +687,7 @@ class QRCodesResource:
         """
         return self._http.delete(f"qrCode/{qr_code_id}/")
 
-    def frames(self) -> List[Dict[str, Any]]:
+    def frames(self) -> builtins.list[dict[str, Any]]:
         """Get available QR code frames.
 
         Frames are decorative borders placed around a QR code on the
@@ -740,7 +745,7 @@ class AddressBookResource:
 
     # -- Recipients (saved "to" addresses) ----------------------------------
 
-    def list_recipients(self) -> List[SavedAddress]:
+    def list_recipients(self) -> list[SavedAddress]:
         """List saved recipient addresses.
 
         Returns:
@@ -768,12 +773,12 @@ class AddressBookResource:
         city: str,
         state: str,
         zip: str,
-        street2: Optional[str] = None,
-        company: Optional[str] = None,
-        country_id: Optional[str] = None,
-        birthday: Optional[str] = None,
-        anniversary: Optional[str] = None,
-        allow_poor: Optional[bool] = None,
+        street2: str | None = None,
+        company: str | None = None,
+        country_id: str | None = None,
+        birthday: str | None = None,
+        anniversary: str | None = None,
+        allow_poor: bool | None = None,
     ) -> int:
         """Save a new recipient address to the address book.
 
@@ -802,7 +807,7 @@ class AddressBookResource:
             ... )
             >>> client.orders.send(..., recipient=rid)
         """
-        body: Dict[str, Any] = {
+        body: dict[str, Any] = {
             "first_name": first_name,
             "last_name": last_name,
             "address1": street1,
@@ -832,18 +837,18 @@ class AddressBookResource:
     def update_recipient(
         self,
         address_id: int,
-        first_name: Optional[str] = None,
-        last_name: Optional[str] = None,
-        street1: Optional[str] = None,
-        city: Optional[str] = None,
-        state: Optional[str] = None,
-        zip: Optional[str] = None,
-        street2: Optional[str] = None,
-        company: Optional[str] = None,
-        country_id: Optional[str] = None,
-        birthday: Optional[str] = None,
-        anniversary: Optional[str] = None,
-        allow_poor: Optional[bool] = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        street1: str | None = None,
+        city: str | None = None,
+        state: str | None = None,
+        zip: str | None = None,
+        street2: str | None = None,
+        company: str | None = None,
+        country_id: str | None = None,
+        birthday: str | None = None,
+        anniversary: str | None = None,
+        allow_poor: bool | None = None,
     ) -> int:
         """Update an existing recipient address.
 
@@ -875,7 +880,7 @@ class AddressBookResource:
             ...     city="Scottsdale",
             ... )
         """
-        body: Dict[str, Any] = {"id": address_id}
+        body: dict[str, Any] = {"id": address_id}
         if first_name is not None:
             body["first_name"] = first_name
         if last_name is not None:
@@ -909,9 +914,9 @@ class AddressBookResource:
 
     def delete_recipient(
         self,
-        address_id: Optional[int] = None,
-        address_ids: Optional[List[int]] = None,
-    ) -> Dict[str, Any]:
+        address_id: int | None = None,
+        address_ids: list[int] | None = None,
+    ) -> dict[str, Any]:
         """Delete one or more saved recipient addresses.
 
         Provide **one** of ``address_id`` (single) or ``address_ids`` (batch).
@@ -923,7 +928,7 @@ class AddressBookResource:
         Returns:
             API response dict.
         """
-        body: Dict[str, Any] = {}
+        body: dict[str, Any] = {}
         if address_id is not None:
             body["address_id"] = address_id
         if address_ids is not None:
@@ -932,7 +937,7 @@ class AddressBookResource:
 
     # -- Senders (saved return/"from" addresses) ----------------------------
 
-    def list_senders(self) -> List[SavedAddress]:
+    def list_senders(self) -> list[SavedAddress]:
         """List saved sender (return) addresses.
 
         Returns:
@@ -946,7 +951,7 @@ class AddressBookResource:
         data = self._http.get("profile/listAddresses")
         if isinstance(data, dict):
             # API response key has a typo ("addressses" with triple 's')
-            items = data.get("addressses", data.get("addresses", []))
+            items = data.get("addressses") or data.get("addresses") or []
         elif isinstance(data, list):
             items = data
         else:
@@ -961,11 +966,11 @@ class AddressBookResource:
         city: str,
         state: str,
         zip: str,
-        street2: Optional[str] = None,
-        company: Optional[str] = None,
-        country_id: Optional[str] = None,
-        default: Optional[bool] = None,
-        allow_poor: Optional[bool] = None,
+        street2: str | None = None,
+        company: str | None = None,
+        country_id: str | None = None,
+        default: bool | None = None,
+        allow_poor: bool | None = None,
     ) -> int:
         """Save a new sender (return) address.
 
@@ -993,7 +998,7 @@ class AddressBookResource:
             ... )
             >>> client.orders.send(..., sender=sid)
         """
-        body: Dict[str, Any] = {
+        body: dict[str, Any] = {
             "first_name": first_name,
             "last_name": last_name,
             "address1": street1,
@@ -1020,9 +1025,9 @@ class AddressBookResource:
 
     def delete_sender(
         self,
-        address_id: Optional[int] = None,
-        address_ids: Optional[List[int]] = None,
-    ) -> Dict[str, Any]:
+        address_id: int | None = None,
+        address_ids: list[int] | None = None,
+    ) -> dict[str, Any]:
         """Delete one or more saved sender (return) addresses.
 
         Provide **one** of ``address_id`` (single) or ``address_ids`` (batch).
@@ -1034,7 +1039,7 @@ class AddressBookResource:
         Returns:
             API response dict.
         """
-        body: Dict[str, Any] = {}
+        body: dict[str, Any] = {}
         if address_id is not None:
             body["address_id"] = address_id
         if address_ids is not None:
@@ -1043,17 +1048,18 @@ class AddressBookResource:
 
     # -- Countries and states -----------------------------------------------
 
-    def countries(self) -> List[Country]:
+    def countries(self) -> list[Country]:
         """Get all supported countries.
 
         Returns:
             List of Country objects.
         """
         data = self._http.get("countries/list")
-        items = data if isinstance(data, list) else data.get("results", [])
+        items = (data if isinstance(data, list) else
+                 (data.get("countries") or data.get("results") or []) if isinstance(data, dict) else [])
         return [Country.from_dict(c) for c in items]
 
-    def states(self, country_code: str = "US") -> List[State]:
+    def states(self, country_code: str = "US") -> list[State]:
         """Get states/provinces for a country.
 
         Args:
@@ -1062,9 +1068,9 @@ class AddressBookResource:
         Returns:
             List of State objects.
         """
-        data = self._http.get("states/list", params={"country": country_code})
-        items = data if isinstance(data, list) else data.get("results", [])
-        return [State.from_dict(s) for s in items]
+        country = next((c for c in self.countries() if c.code.upper() == country_code.upper()), None)
+        items = country.raw.get("states", []) if country else []
+        return [State.from_dict(s) for s in items] if isinstance(items, list) else []
 
 
 # ---------------------------------------------------------------------------
@@ -1085,33 +1091,33 @@ class BasketResource:
     def add_order(
         self,
         card_id: str,
-        message: Optional[str] = None,
-        wishes: Optional[str] = None,
-        font: Optional[str] = None,
-        font_size: Optional[int] = None,
-        auto_font_size: Optional[bool] = None,
-        message_align: Optional[str] = None,
-        addresses: Optional[List[Dict[str, Any]]] = None,
-        address_ids: Optional[List[int]] = None,
-        return_address_id: Optional[int] = None,
-        denomination_id: Optional[int] = None,
-        insert_id: Optional[int] = None,
-        signature_id: Optional[int] = None,
-        signature2_id: Optional[int] = None,
-        date_send: Optional[str] = None,
-        coupon_code: Optional[str] = None,
-        check_quantity: Optional[bool] = None,
-        check_quantity_inserts: Optional[bool] = None,
-        delivery_confirmation: Optional[Union[bool, int]] = None,
-        stamp_option_id: Optional[int] = None,
-        shipping_method_id: Optional[int] = None,
-        shipping_rate_id: Optional[int] = None,
-        shipping_address_id: Optional[int] = None,
-        must_deliver_by: Optional[str] = None,
-        client_metadata: Optional[str] = None,
-        suppress_warnings: Optional[bool] = None,
+        message: str | None = None,
+        wishes: str | None = None,
+        font: str | None = None,
+        font_size: int | None = None,
+        auto_font_size: bool | None = None,
+        message_align: str | None = None,
+        addresses: builtins.list[dict[str, Any]] | None = None,
+        address_ids: builtins.list[int] | None = None,
+        return_address_id: int | None = None,
+        denomination_id: int | None = None,
+        insert_id: int | None = None,
+        signature_id: int | None = None,
+        signature2_id: int | None = None,
+        date_send: str | None = None,
+        coupon_code: str | None = None,
+        check_quantity: bool | None = None,
+        check_quantity_inserts: bool | None = None,
+        delivery_confirmation: bool | int | None = None,
+        stamp_option_id: int | None = None,
+        shipping_method_id: int | None = None,
+        shipping_rate_id: int | None = None,
+        shipping_address_id: int | None = None,
+        must_deliver_by: str | None = None,
+        client_metadata: str | None = None,
+        suppress_warnings: bool | None = None,
         **extra: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Add an order to the basket (``orders/placeBasket``).
 
         Provide recipients via **one** of:
@@ -1186,7 +1192,7 @@ class BasketResource:
                 "with addresses, so mixing is not supported."
             )
 
-        body: Dict[str, Any] = {"card_id": int(card_id)}
+        body: dict[str, Any] = {"card_id": int(card_id)}
 
         if message is not None:
             body["message"] = message
@@ -1201,10 +1207,10 @@ class BasketResource:
         if message_align is not None:
             body["message_align"] = message_align
         if addresses is not None:
-            converted: List[Dict[str, Any]] = []
+            converted: list[dict[str, Any]] = []
             for addr in addresses:
                 if any(k.startswith("to_") for k in addr) or "address_id" in addr:
-                    converted.append(addr)
+                    converted.append(dict(addr))
                 else:
                     addr = dict(addr)
                     row_message = addr.pop("message", None)
@@ -1220,9 +1226,9 @@ class BasketResource:
             # top-level value).
             if return_address_id is not None:
                 raid = int(return_address_id)
-                for row in converted:
-                    if "return_address_id" not in row:
-                        row["return_address_id"] = raid
+                for converted_row in converted:
+                    if "return_address_id" not in converted_row:
+                        converted_row["return_address_id"] = raid
             body["addresses"] = converted
         if address_ids is not None:
             body["address_ids"] = address_ids
@@ -1265,7 +1271,7 @@ class BasketResource:
 
         return self._http.post("orders/placeBasket", json_body=body)
 
-    def remove(self, basket_id: int) -> Dict[str, Any]:
+    def remove(self, basket_id: int) -> dict[str, Any]:
         """Remove a single item from the basket.
 
         Args:
@@ -1281,7 +1287,7 @@ class BasketResource:
         """
         return self._http.post("basket/remove", json_body={"id": basket_id})
 
-    def clear(self) -> Dict[str, Any]:
+    def clear(self) -> dict[str, Any]:
         """Remove all items from the basket.
 
         Returns:
@@ -1289,7 +1295,7 @@ class BasketResource:
         """
         return self._http.post("basket/clear", json_body={})
 
-    def list(self) -> Dict[str, Any]:
+    def list(self) -> dict[str, Any]:
         """List all items currently in the basket.
 
         Returns:
@@ -1302,7 +1308,7 @@ class BasketResource:
         """
         return self._http.get("basket/allNew")
 
-    def get_item(self, basket_id: int) -> Dict[str, Any]:
+    def get_item(self, basket_id: int) -> dict[str, Any]:
         """Get a single basket item by ID.
 
         Args:
@@ -1326,15 +1332,15 @@ class BasketResource:
 
     def send(
         self,
-        coupon_code: Optional[str] = None,
-        credit_card_id: Optional[int] = None,
-        test_mode: Optional[bool] = None,
-        check_quantity: Optional[bool] = None,
-        check_cass_before_submit: Optional[bool] = None,
-        notes: Optional[Dict[str, str]] = None,
-        price_structure: Optional[Dict[str, float]] = None,
+        coupon_code: str | None = None,
+        credit_card_id: int | None = None,
+        test_mode: bool | None = None,
+        check_quantity: bool | None = None,
+        check_cass_before_submit: bool | None = None,
+        notes: dict[str, str] | None = None,
+        price_structure: dict[str, float] | None = None,
         **extra: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Submit the basket for processing (``basket/send``).
 
         Call this after adding orders with ``add_order()``.
@@ -1355,7 +1361,7 @@ class BasketResource:
         Returns:
             Order confirmation dict.
         """
-        body: Dict[str, Any] = {}
+        body: dict[str, Any] = {}
 
         if coupon_code is not None:
             body["couponCode"] = coupon_code
@@ -1392,7 +1398,7 @@ class ProspectingResource:
         zip_code: str,
         radius_miles: int = 10,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Calculate prospecting targets in an area.
 
         Args:
@@ -1420,13 +1426,13 @@ _CAMEL_TO_API = {
 }
 
 
-def _flatten_address(data: Dict[str, Any], prefix: str) -> Dict[str, str]:
+def _flatten_address(data: dict[str, Any], prefix: str) -> dict[str, Any]:
     """Flatten a camelCase address dict into ``prefix_field`` API fields.
 
     Keys that already start with ``return_`` are passed through as-is
     (inline return-address fields like ``return_first_name``).
     """
-    result: Dict[str, str] = {}
+    result: dict[str, str] = {}
     for key, value in data.items():
         if value is None:
             continue
@@ -1448,7 +1454,7 @@ class ShippingResource:
     def __init__(self, http: HttpClient):
         self._http = http
 
-    def stamp_options(self) -> List[StampOption]:
+    def stamp_options(self) -> list[StampOption]:
         """Get available postal stamp options.
 
         Pass a returned ``id`` to ``orders.send()`` or
@@ -1465,7 +1471,8 @@ class ShippingResource:
         """
         data = self._http.get("shipping/stampOptions")
         if isinstance(data, dict):
-            items = data.get("stampOptions", data.get("options", data.get("results", [])))
+            items = (data.get("stamp_options") or data.get("stampOptions")
+                     or data.get("options") or data.get("results") or [])
         elif isinstance(data, list):
             items = data
         else:
@@ -1493,28 +1500,28 @@ class OrdersResource:
         self,
         card_id: str,
         font: str,
-        recipient: Union[Recipient, Dict[str, Any], int, List[Union[Recipient, Dict[str, Any], int]]],
-        message: Optional[str] = None,
-        wishes: Optional[str] = None,
-        sender: Union[Sender, Dict[str, Any], int, None] = None,
-        return_address_id: Optional[int] = None,
-        message_align: Optional[str] = None,
-        denomination_id: Optional[int] = None,
-        insert_id: Optional[int] = None,
-        credit_card_id: Optional[int] = None,
-        coupon_code: Optional[str] = None,
-        date_send: Optional[str] = None,
-        check_cass_before_submit: Optional[bool] = None,
-        delivery_confirmation: Optional[Union[bool, int]] = None,
-        stamp_option_id: Optional[int] = None,
-        client_metadata: Optional[str] = None,
-        suppress_warnings: Optional[bool] = None,
-        signature_id: Optional[int] = None,
-        signature2_id: Optional[int] = None,
-        font_size: Optional[int] = None,
-        auto_font_size: Optional[bool] = None,
+        recipient: Recipient | dict[str, Any] | int | builtins.list[Recipient | dict[str, Any] | int],
+        message: str | None = None,
+        wishes: str | None = None,
+        sender: Sender | dict[str, Any] | int | None = None,
+        return_address_id: int | None = None,
+        message_align: str | None = None,
+        denomination_id: int | None = None,
+        insert_id: int | None = None,
+        credit_card_id: int | None = None,
+        coupon_code: str | None = None,
+        date_send: str | None = None,
+        check_cass_before_submit: bool | None = None,
+        delivery_confirmation: bool | int | None = None,
+        stamp_option_id: int | None = None,
+        client_metadata: str | None = None,
+        suppress_warnings: bool | None = None,
+        signature_id: int | None = None,
+        signature2_id: int | None = None,
+        font_size: int | None = None,
+        auto_font_size: bool | None = None,
         **extra: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Send a handwritten note — adds to basket then sends in one call.
 
         Uses ``orders/placeBasket`` + ``basket/send`` under the hood.
@@ -1632,8 +1639,8 @@ class OrdersResource:
         """
         # -- Resolve sender ----------------------------------------------------
         # int → return_address_id, Sender/dict → from_* fields per row
-        sender_id: Optional[int] = return_address_id
-        default_sender_fields: Optional[Dict[str, str]] = None
+        sender_id: int | None = return_address_id
+        default_sender_fields: dict[str, str] | None = None
 
         if sender is not None:
             if isinstance(sender, int):
@@ -1664,8 +1671,8 @@ class OrdersResource:
                 "send IDs."
             )
 
-        addresses: List[Dict[str, Any]] = []
-        address_ids: List[int] = []
+        addresses: list[dict[str, Any]] = []
+        address_ids: list[int] = []
         for r in recipient:
             if isinstance(r, int) and not isinstance(r, bool):
                 # Numeric IDs must go via the top-level address_ids param so
@@ -1674,7 +1681,7 @@ class OrdersResource:
                 # causes blank addresses.
                 address_ids.append(r)
             elif isinstance(r, Recipient):
-                row: Dict[str, Any] = _flatten_address(r.to_dict(), "to")
+                row: dict[str, Any] = _flatten_address(r.to_dict(), "to")
 
                 # Apply defaults for message/wishes if not already set
                 if "message" not in row and message is not None:
@@ -1699,10 +1706,7 @@ class OrdersResource:
                 row_sender = r.pop("sender", None)
 
                 # Flatten recipient address
-                if not any(k.startswith("to_") for k in r):
-                    row = _flatten_address(r, "to")
-                else:
-                    row = r
+                row = _flatten_address(r, "to") if not any(k.startswith("to_") for k in r) else r
 
                 if row_message is not None:
                     row["message"] = row_message
@@ -1739,7 +1743,7 @@ class OrdersResource:
                 )
 
         # Build placeBasket kwargs
-        place_kwargs: Dict[str, Any] = {
+        place_kwargs: dict[str, Any] = {
             "card_id": card_id,
             "font": font,
         }
@@ -1786,7 +1790,7 @@ class OrdersResource:
         self._basket.add_order(**place_kwargs)
 
         # Step 2: basket/send
-        send_kwargs: Dict[str, Any] = {}
+        send_kwargs: dict[str, Any] = {}
         if credit_card_id is not None:
             send_kwargs["credit_card_id"] = credit_card_id
         if coupon_code is not None:
@@ -1812,7 +1816,7 @@ class OrdersResource:
         self,
         page: int = 1,
         per_page: int = 50,
-    ) -> List[Order]:
+    ) -> builtins.list[Order]:
         """List orders with pagination.
 
         Args:
@@ -1829,7 +1833,7 @@ class OrdersResource:
         items = data if isinstance(data, list) else data.get("results", data.get("orders", []))
         return [Order.from_dict(o) for o in items]
 
-    def list_past_baskets(self, page: int = 1) -> List[Dict[str, Any]]:
+    def list_past_baskets(self, page: int = 1) -> builtins.list[dict[str, Any]]:
         """List previously submitted baskets.
 
         Args:
@@ -1840,5 +1844,5 @@ class OrdersResource:
         """
         data = self._http.get("orders/pastBaskets", params={"page": page})
         if isinstance(data, dict):
-            return data.get("baskets", data.get("results", []))
+            return data.get("baskets") or data.get("results") or []
         return data if isinstance(data, list) else []

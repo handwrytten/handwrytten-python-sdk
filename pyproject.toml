@@ -1,25 +1,25 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "handwrytten"
-version = "1.4.0"
+version = "1.5.0"
 description = "Official Python SDK for the Handwrytten API — send real handwritten notes at scale"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.8"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
 authors = [{ name = "Handwrytten", email = "contact@handwrytten.com" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = ["requests>=2.25.0", "click>=8.0"]
@@ -32,8 +32,8 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "responses>=0.23",
-    "mypy>=1.0",
-    "ruff>=0.1.0",
+    "mypy>=1.10",
+    "ruff>=0.6",
 ]
 
 [project.urls]
@@ -45,11 +45,17 @@ Issues = "https://github.com/handwrytten/handwrytten-python-sdk/issues"
 [tool.setuptools.packages.find]
 include = ["handwrytten*"]
 
+[tool.setuptools.package-data]
+handwrytten = ["py.typed"]
+
 [tool.ruff]
-target-version = "py38"
+target-version = "py310"
 line-length = 100
 
+[tool.ruff.lint]
+# Pinned explicitly so new ruff releases do not change what CI enforces.
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "PIE", "C4", "RUF022"]
+
 [tool.mypy]
-python_version = "3.8"
-warn_return_any = true
+python_version = "3.10"
 warn_unused_configs = true

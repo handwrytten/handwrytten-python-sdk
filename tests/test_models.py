@@ -43,6 +43,17 @@ class TestUser:
         u = User.from_dict({"uid": "abc"})
         assert u.id == "abc"
 
+    def test_credits_numeric_string_becomes_float(self):
+        assert User.from_dict({"id": 1, "credits": "12.50"}).credits == 12.5
+
+    def test_credits_zero_preserved(self):
+        assert User.from_dict({"id": 1, "credits": 0}).credits == 0.0
+
+    def test_credits_invalid_or_blank_is_none(self):
+        assert User.from_dict({"id": 1, "credits": "n/a"}).credits is None
+        assert User.from_dict({"id": 1, "credits": ""}).credits is None
+        assert User.from_dict({"id": 1}).credits is None
+
     def test_from_dict_credits(self):
         u = User.from_dict({"id": 1, "credits": 42.5})
         assert u.credits == 42.5
@@ -140,6 +151,13 @@ class TestGiftCard:
     def test_amount_from_value(self):
         gc = GiftCard.from_dict({"id": 1, "title": "X", "value": 50.0})
         assert gc.amount == 50.0
+
+    def test_amount_zero_not_replaced_by_value(self):
+        gc = GiftCard.from_dict({"id": 1, "title": "X", "amount": 0, "value": 25})
+        assert gc.amount == 0.0
+
+    def test_amount_invalid_is_none(self):
+        assert GiftCard.from_dict({"id": 1, "title": "X", "amount": "free"}).amount is None
 
     def test_image_url(self):
         gc = GiftCard.from_dict({"id": 1, "title": "X", "image_url": "https://x.com/gc.jpg"})
@@ -427,9 +445,27 @@ class TestCountry:
         assert c.code == "US"
         assert c.name == "United States"
 
-    def test_code_from_id(self):
-        c = Country.from_dict({"id": "CA", "name": "Canada"})
+    def test_code_from_ups_code(self):
+        c = Country.from_dict({"id": 2, "ups_code": "CA", "name": "Canada"})
         assert c.code == "CA"
+        assert c.id == 2
+
+    def test_aliases_and_delivery_cost(self):
+        c = Country.from_dict({
+            "id": "3", "ups_code": "GB", "name": "United Kingdom",
+            "aliases": "UK | Great Britain|", "delivery_cost": "1.25",
+        })
+        assert c.id == 3
+        assert c.aliases == ["UK", "Great Britain"]
+        assert c.delivery_cost == 1.25
+
+    def test_invalid_numeric_fields_fall_back(self):
+        c = Country.from_dict({"id": "abc", "ups_code": "XX", "delivery_cost": "n/a"})
+        assert c.id == 0
+        assert c.delivery_cost == 0.0
+
+    def test_missing_code_is_empty_string(self):
+        assert Country.from_dict({"id": 9, "name": "Nowhere"}).code == ""
 
 
 class TestState:

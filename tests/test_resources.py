@@ -44,8 +44,8 @@ class TestCards:
 
     def test_get_returns_single_card(self, client, mock_api):
         mock_api.get(
-            BASE + "cards/get/42",
-            json={"id": 42, "title": "Holiday", "cover": "https://img.com/holiday.jpg"},
+            BASE + "cards/view?card_id=42",
+            json={"status": "ok", "card": {"id": 42, "title": "Holiday", "cover": "https://img.com/holiday.jpg"}},
         )
 
         card = client.cards.get("42")
@@ -66,7 +66,7 @@ class TestCards:
 
     def test_categories(self, client, mock_api):
         mock_api.get(
-            BASE + "cards/categories",
+            BASE + "categories/list",
             json=[{"id": 1, "name": "Greeting"}, {"id": 2, "name": "Holiday"}],
         )
 
@@ -76,7 +76,7 @@ class TestCards:
         assert cats[0]["name"] == "Greeting"
 
     def test_categories_non_list_response(self, client, mock_api):
-        mock_api.get(BASE + "cards/categories", json={"error": "unexpected"})
+        mock_api.get(BASE + "categories/list", json={"error": "unexpected"})
 
         cats = client.cards.categories()
 
@@ -458,8 +458,9 @@ class TestOrders:
         """Mixing saved IDs and full addresses is rejected up front."""
         import pytest
 
-        with responses.RequestsMock():
-            with pytest.raises(ValueError, match="all saved-address IDs .* or all full"):
+        with responses.RequestsMock(), pytest.raises(
+            ValueError, match="all saved-address IDs .* or all full"
+        ):
                 client.orders.send(
                     card_id="100",
                     font="hwDavid",
@@ -722,8 +723,7 @@ class TestOrders:
 
     def test_send_invalid_recipient_type_raises(self, client):
         import pytest
-        with responses.RequestsMock() as rsps:
-            with pytest.raises(TypeError, match="Each recipient must be"):
+        with responses.RequestsMock(), pytest.raises(TypeError, match="Each recipient must be"):
                 client.orders.send(
                     card_id="100",
                     font="hwDavid",
@@ -811,8 +811,9 @@ class TestBasket:
     def test_add_order_rejects_both_addresses_and_address_ids(self, client):
         import pytest
 
-        with responses.RequestsMock():
-            with pytest.raises(ValueError, match="either addresses .* or address_ids"):
+        with responses.RequestsMock(), pytest.raises(
+            ValueError, match="either addresses .* or address_ids"
+        ):
                 client.basket.add_order(
                     card_id="100",
                     addresses=[{"to_first_name": "Jane", "to_last_name": "Doe"}],
@@ -1013,11 +1014,11 @@ class TestAddressBook:
 
     def test_states(self, client, mock_api):
         mock_api.get(
-            BASE + "states/list",
-            json=[
-                {"abbreviation": "AZ", "name": "Arizona"},
-                {"abbreviation": "CA", "name": "California"},
-            ],
+            BASE + "countries/list",
+            json={"countries": [{"ups_code": "US", "states": [
+                {"short_name": "AZ", "name": "Arizona"},
+                {"short_name": "CA", "name": "California"},
+            ]}]},
         )
 
         states = client.address_book.states("US")

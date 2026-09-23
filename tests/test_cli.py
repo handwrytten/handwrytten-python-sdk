@@ -387,8 +387,8 @@ def test_address_countries_cli():
 @responses.activate
 def test_address_states_cli():
     responses.get(
-        BASE + "states/list",
-        json=[{"abbreviation": "AZ", "name": "Arizona"}],
+        BASE + "countries/list",
+        json={"countries": [{"ups_code": "US", "states": [{"short_name": "AZ", "name": "Arizona"}]}]},
     )
 
     runner = CliRunner()

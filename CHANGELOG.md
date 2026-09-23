@@ -5,6 +5,34 @@ All notable changes to the Handwrytten Python SDK will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.5.0] - 2026-09-23
+
+Note: 1.4.0 is recorded below but was never published to PyPI. Upgrading from 1.3.2 picks up both sets of changes.
+
+### Changed
+
+- **Minimum Python is now 3.10.** Python 3.8 and 3.9 are past end-of-life; dropping them removes the legacy license-metadata workaround and lets the type checker run on every supported version. Python 3.14 is now tested in CI.
+- Tolerate non-numeric `credits`, gift-card `amount` and country `id`/`delivery_cost` values from the API instead of raising during model construction.
+- Derive the `User-Agent` header from the package version instead of a hard-coded string.
+- Pin ruff's rule set and clear all outstanding lint and type-check findings so CI enforces them again.
+
+### Fixed
+
+- Explicitly package the `py.typed` marker and declare license metadata as an SPDX expression.
+- Preserve zero gift-card amounts and normalize numeric-string amounts and user credits to numbers, matching JavaScript.
+- Preserve file contents across multipart upload retries.
+- Add `DELIVERY_CONFIRMATION` and `CASS_VALIDATION` aliases shared with JavaScript.
+- Expand shared regression fixtures to cover all 12 resources / 44 public methods and numeric response fields.
+- Fix country-list envelope parsing and replace the nonexistent states endpoint with the selected country’s nested states.
+- Fix card lookup endpoint and response unwrapping, retaining card dimensions.
+- Fix category lookup endpoint/envelope while retaining dictionary results.
+- Correct country codes and expose country ID, aliases and delivery cost.
+- Support snake_case stamp envelopes, preserve QR raw responses, and avoid mutating basket inputs.
+
+See [SDK-PARITY.md](SDK-PARITY.md) for the cross-SDK review and validation scope.
+
 ## [1.4.0] - 2026-04-22
 
 ### Added

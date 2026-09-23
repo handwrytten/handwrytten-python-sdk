@@ -10,7 +10,6 @@ from handwrytten.exceptions import HandwryttenError
 @click.group()
 def cards():
     """Browse card and stationery templates."""
-    pass
 
 
 @cards.command("list")

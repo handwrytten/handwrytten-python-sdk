@@ -10,7 +10,6 @@ from handwrytten.exceptions import HandwryttenError
 @click.group()
 def fonts():
     """Browse handwriting styles."""
-    pass
 
 
 @fonts.command("list")

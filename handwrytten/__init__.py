@@ -18,19 +18,19 @@ Usage:
     ... )
 """
 
-__version__ = "1.4.0"
-
+from handwrytten._version import __version__
 from handwrytten.client import Handwrytten
 from handwrytten.exceptions import (
-    HandwryttenError,
     AuthenticationError,
     BadRequestError,
+    HandwryttenError,
     NotFoundError,
     RateLimitError,
     ServerError,
 )
 from handwrytten.models import (
     Card,
+    Country,
     CustomCard,
     CustomImage,
     DeliveryConfirmation,
@@ -47,21 +47,16 @@ from handwrytten.models import (
     Sender,
     Signature,
     StampOption,
-    Country,
     State,
     User,
     ZoneType,
 )
 
 __all__ = [
-    "Handwrytten",
-    "HandwryttenError",
     "AuthenticationError",
     "BadRequestError",
-    "NotFoundError",
-    "RateLimitError",
-    "ServerError",
     "Card",
+    "Country",
     "CustomCard",
     "CustomImage",
     "DeliveryConfirmation",
@@ -69,17 +64,22 @@ __all__ = [
     "Dimension",
     "Font",
     "GiftCard",
+    "Handwrytten",
+    "HandwryttenError",
     "Insert",
+    "NotFoundError",
     "Order",
     "QRCode",
     "QRCodeLocation",
+    "RateLimitError",
     "Recipient",
     "SavedAddress",
     "Sender",
+    "ServerError",
     "Signature",
     "StampOption",
-    "Country",
     "State",
     "User",
     "ZoneType",
+    "__version__",
 ]
