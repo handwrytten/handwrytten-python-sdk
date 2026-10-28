@@ -273,7 +273,7 @@ for font in fonts:
 customizer_fonts = client.fonts.list_for_customizer()
 ```
 
-### Gift Cards and Inserts
+### Gift Cards, Inserts and Gift Boxes
 
 ```python
 # List gift cards with their denominations (price points)
@@ -302,6 +302,21 @@ client.orders.send(
     font="hwDavid",
     message="Hello!",
     insert_id=inserts[0].id,
+    recipient={...},
+)
+
+# List gift boxes (cookie boxes, etc.) available to your account
+bundles = client.bundles.list()
+for b in bundles:
+    print(f"{b.id}: {b.name} (${b.price} + ${b.delivery_cost} delivery)")
+
+# Ship a gift box with the card (US recipients only; cannot be combined
+# with an insert or gift card)
+client.orders.send(
+    card_id="12345",
+    font="hwDavid",
+    message="Enjoy the cookies!",
+    bundle_id=bundles[0].id,
     recipient={...},
 )
 ```
@@ -506,6 +521,7 @@ except HandwryttenError as e:
 | `client.fonts` | `list()`, `list_for_customizer()` |
 | `client.gift_cards` | `list()` |
 | `client.inserts` | `list(include_historical)` |
+| `client.bundles` | `list()` |
 | `client.qr_codes` | `list()`, `create()`, `delete()`, `frames()` |
 | `client.address_book` | `list_recipients()`, `add_recipient()`, `update_recipient()`, `delete_recipient()`, `list_senders()`, `add_sender()`, `delete_sender()`, `countries()`, `states(country)` |
 | `client.shipping` | `stamp_options()` |

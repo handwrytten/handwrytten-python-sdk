@@ -29,6 +29,7 @@ from handwrytten.exceptions import (
     ServerError,
 )
 from handwrytten.models import (
+    Bundle,
     Card,
     Country,
     CustomCard,
@@ -55,6 +56,7 @@ from handwrytten.models import (
 __all__ = [
     "AuthenticationError",
     "BadRequestError",
+    "Bundle",
     "Card",
     "Country",
     "CustomCard",

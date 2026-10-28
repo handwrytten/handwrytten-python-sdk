@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Gift boxes (bundles)**: `client.bundles.list()` returns the gift boxes (cookie boxes, etc.) available to your account, from `GET /bundles/list`. It returns an empty list if your account cannot purchase gift boxes.
+- **Bundle model**: new `Bundle` dataclass (`id`, `name`, `description`, `price`, `delivery_cost`, `image_url`) exported from the package.
+- `bundle_id` parameter on `client.orders.send()` and `client.basket.add_order()`. Gift boxes are US-only and cannot be combined with `insert_id` or `denomination_id`; the API rejects those orders.
+
 ## [1.5.0] - 2026-09-23
 
 Note: 1.4.0 is recorded below but was never published to PyPI. Upgrading from 1.3.2 picks up both sets of changes.

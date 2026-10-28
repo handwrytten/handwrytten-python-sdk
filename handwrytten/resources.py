@@ -8,6 +8,7 @@ from typing import Any
 from handwrytten.exceptions import HandwryttenError
 from handwrytten.http_client import HttpClient
 from handwrytten.models import (
+    Bundle,
     Card,
     Country,
     CustomCard,
@@ -598,6 +599,30 @@ class InsertsResource:
 
 
 # ---------------------------------------------------------------------------
+# Bundles (gift boxes)
+# ---------------------------------------------------------------------------
+
+class BundlesResource:
+    """Browse gift boxes (cookie boxes, etc.) that ship with a card."""
+
+    def __init__(self, http: HttpClient):
+        self._http = http
+
+    def list(self) -> builtins.list[Bundle]:
+        """Get the gift boxes available to your account.
+
+        Returns an empty list if your account is not allowed to purchase
+        gift boxes (the same permission that governs gift cards).
+
+        Returns:
+            List of Bundle objects.
+        """
+        data = self._http.get("bundles/list")
+        items = data if isinstance(data, list) else data.get("bundles", data.get("results", []))
+        return [Bundle.from_dict(b) for b in items]
+
+
+# ---------------------------------------------------------------------------
 # QR Codes
 # ---------------------------------------------------------------------------
 
@@ -1102,6 +1127,7 @@ class BasketResource:
         return_address_id: int | None = None,
         denomination_id: int | None = None,
         insert_id: int | None = None,
+        bundle_id: int | None = None,
         signature_id: int | None = None,
         signature2_id: int | None = None,
         date_send: str | None = None,
@@ -1143,6 +1169,9 @@ class BasketResource:
             return_address_id: Saved return-address ID.
             denomination_id: Gift card denomination ID.
             insert_id: Insert item ID.
+            bundle_id: Gift box ID from ``client.bundles.list()``. US
+                recipients only; cannot be combined with ``insert_id`` or
+                ``denomination_id``.
             signature_id: Signature ID for the wishes section.
             signature2_id: Signature ID for the main message block.
             date_send: Scheduled send date.
@@ -1238,6 +1267,8 @@ class BasketResource:
             body["denomination_id"] = int(denomination_id)
         if insert_id is not None:
             body["insert_id"] = int(insert_id)
+        if bundle_id is not None:
+            body["bundle_id"] = int(bundle_id)
         if signature_id is not None:
             body["signature_id"] = int(signature_id)
         if signature2_id is not None:
@@ -1508,6 +1539,7 @@ class OrdersResource:
         message_align: str | None = None,
         denomination_id: int | None = None,
         insert_id: int | None = None,
+        bundle_id: int | None = None,
         credit_card_id: int | None = None,
         coupon_code: str | None = None,
         date_send: str | None = None,
@@ -1564,6 +1596,9 @@ class OrdersResource:
             message_align: Text alignment — ``"left"`` or ``"center"``.
             denomination_id: Gift card denomination ID.
             insert_id: Insert item ID.
+            bundle_id: Gift box ID from ``client.bundles.list()``. US
+                recipients only; cannot be combined with ``insert_id`` or
+                ``denomination_id``.
             credit_card_id: Credit card on file to charge.
             coupon_code: Promotional coupon code.
             date_send: Scheduled send date.
@@ -1763,6 +1798,8 @@ class OrdersResource:
             place_kwargs["denomination_id"] = denomination_id
         if insert_id is not None:
             place_kwargs["insert_id"] = insert_id
+        if bundle_id is not None:
+            place_kwargs["bundle_id"] = bundle_id
         if date_send is not None:
             place_kwargs["date_send"] = date_send
         if delivery_confirmation is not None:
