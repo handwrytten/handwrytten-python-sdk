@@ -108,6 +108,16 @@ def test_stamp_envelopes(client, mock_api, key):
     assert (stamp.id, stamp.name, stamp.price) == (2, "Presorted", 0.5)
 
 
+@pytest.mark.parametrize("key", [None, "bundles", "results"])
+def test_bundle_envelopes(client, mock_api, key):
+    items = [FIXTURE["bundle"]]
+    mock_api.get(BASE + "bundles/list", json={key: items} if key else items)
+    bundle = client.bundles.list()[0]
+    assert (bundle.id, bundle.name, bundle.price, bundle.delivery_cost) == (3, "Cookie Box", 24.0, 9.5)
+    assert bundle.image_url == "https://example.com/box.png"
+    assert bundle.raw == FIXTURE["bundle"]
+
+
 @pytest.mark.parametrize("value,expected", [(False, 0), (True, 1), (0, 0), (1, 1), (2, 2)])
 def test_delivery_confirmation(client, mock_api, value, expected):
     mock_api.post(BASE + "orders/placeBasket", json={"ok": True})
@@ -121,7 +131,8 @@ def test_saved_recipient_payload(client, mock_api):
     mock_api.post(BASE + "orders/placeBasket", json={"ok": True})
     mock_api.post(BASE + "basket/send", json={"ok": True})
     client.orders.send(card_id="100", font="hwDavid", recipient=[1, 2], sender=99,
-                       message="Hello", wishes="Best", delivery_confirmation=2, stamp_option_id=2)
+                       message="Hello", wishes="Best", delivery_confirmation=2, stamp_option_id=2,
+                       bundle_id=3)
     assert json.loads(mock_api.calls[0].request.body) == FIXTURE["saved_order"]
 
 

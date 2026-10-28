@@ -38,6 +38,17 @@
     "label": "Presorted",
     "price": "0.5"
   },
+  "bundle": {
+    "id": 3,
+    "name": "Cookie Box",
+    "description": "A dozen cookies",
+    "price": "24.00",
+    "delivery_cost": "9.50",
+    "image_url": "https://example.com/box.png",
+    "weight": "1.2000",
+    "quantity": 120,
+    "sort_no": 1
+  },
   "inline": {
     "to_first_name": "Jane",
     "to_last_name": "Doe",
@@ -56,6 +67,7 @@
       2
     ],
     "return_address_id": 99,
+    "bundle_id": 3,
     "delivery_confirmation": 2,
     "stamp_option_id": 2
   },
@@ -88,6 +100,9 @@
       "list"
     ],
     "InsertsResource": [
+      "list"
+    ],
+    "BundlesResource": [
       "list"
     ],
     "QRCodesResource": [

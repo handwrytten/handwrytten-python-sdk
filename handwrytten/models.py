@@ -168,6 +168,36 @@ class Insert:
         )
 
 
+@dataclass
+class Bundle:
+    """A gift box (e.g. a cookie box) shipped with the card.
+
+    Pass the ``id`` to ``orders.send()`` / ``basket.add_order()`` via the
+    ``bundle_id`` parameter. US recipients only; cannot be combined with an
+    insert or a gift card.
+    """
+
+    id: int
+    name: str
+    description: str | None = None
+    price: float | None = None
+    delivery_cost: float | None = None
+    image_url: str | None = None
+    raw: dict = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Bundle:
+        return cls(
+            id=_to_int(data.get("id")),
+            name=data.get("name", ""),
+            description=data.get("description"),
+            price=_to_float(data.get("price")),
+            delivery_cost=_to_float(data.get("delivery_cost")),
+            image_url=data.get("image_url"),
+            raw=data,
+        )
+
+
 class ZoneType:
     """Content type for a custom card zone (header, main, footer, back)."""
 

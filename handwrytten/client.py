@@ -9,6 +9,7 @@ from handwrytten.resources import (
     AddressBookResource,
     AuthResource,
     BasketResource,
+    BundlesResource,
     CardsResource,
     CustomCardsResource,
     FontsResource,
@@ -82,6 +83,7 @@ class Handwrytten:
         self.fonts = FontsResource(self._http)
         self.gift_cards = GiftCardsResource(self._http)
         self.inserts = InsertsResource(self._http)
+        self.bundles = BundlesResource(self._http)
         self.qr_codes = QRCodesResource(self._http)
         self.address_book = AddressBookResource(self._http)
         self.shipping = ShippingResource(self._http)
