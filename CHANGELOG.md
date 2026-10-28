@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-27
+
 ### Added
 
 - **Gift boxes (bundles)**: `client.bundles.list()` returns the gift boxes (cookie boxes, etc.) available to your account, from `GET /bundles/list`. It returns an empty list if your account cannot purchase gift boxes.
