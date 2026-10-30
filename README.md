@@ -73,6 +73,28 @@ result = client.orders.send(
 )
 ```
 
+### Send One Order Without the Basket
+
+`orders.send()` adds to your account's basket and then sends the whole basket, so concurrent calls can send each other's orders. `orders.send_single()` creates and pays for exactly one order in one call (`orders/singleStepOrder`) and never touches the basket. Use it when sending from parallel jobs or automations. It takes the font's `label`, not its `id`, and one inline recipient. Always pass `sender`: it does not fall back to your account's default return address, so the order is rejected without one (the only exception is a team member whose team enforces a return address).
+
+```python
+result = client.orders.send_single(
+    card_id="12345",
+    font_label="Casual David",
+    message="Thank you for your business!",
+    sender=4567,  # saved return address ID, or an address dict
+    recipient={
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "street1": "123 Main St",
+        "city": "Phoenix",
+        "state": "AZ",
+        "zip": "85001",
+    },
+)
+print(result["order_id"])
+```
+
 ### Send Bulk — Multiple Recipients with Per-Recipient Overrides
 
 Each recipient can have its own `message`, `wishes`, and `sender`. Top-level values serve as defaults for any recipient that doesn't specify its own.
@@ -525,7 +547,7 @@ except HandwryttenError as e:
 | `client.qr_codes` | `list()`, `create()`, `delete()`, `frames()` |
 | `client.address_book` | `list_recipients()`, `add_recipient()`, `update_recipient()`, `delete_recipient()`, `list_senders()`, `add_sender()`, `delete_sender()`, `countries()`, `states(country)` |
 | `client.shipping` | `stamp_options()` |
-| `client.orders` | `send()`, `get(id)`, `list()`, `list_past_baskets()` |
+| `client.orders` | `send()`, `send_single()`, `get(id)`, `list()`, `list_past_baskets()` |
 | `client.basket` | `add_order()`, `send()`, `remove(basket_id)`, `clear()`, `list()`, `get_item(basket_id)`, `count()` |
 | `client.prospecting` | `calculate_targets(zip, radius)` |
 
@@ -538,6 +560,8 @@ client = Handwrytten(
     max_retries=5,       # automatic retries with exponential backoff
 )
 ```
+
+Calls that create orders (`orders.send()`, `orders.send_single()`, `basket.add_order()`, `basket.send()`) are retried only on 429. A 5xx, timeout or connection error may arrive after the order was already created, so it is raised instead of retried. Check `client.orders.list()` before sending again.
 
 ## Full Example
 
