@@ -1973,17 +1973,20 @@ class OrdersResource:
 
         return self._http.post_non_idempotent("orders/singleStepOrder", json_body=body)
 
-    def get(self, order_id: str) -> Order:
-        """Retrieve an order by ID.
+    def get(self, order_id: str | int) -> Order:
+        """Retrieve an order by ID (``orders/details``).
 
         Args:
-            order_id: The order's unique identifier.
+            order_id: The order's ID, e.g. the ``order_id`` from
+                ``send_single()``.
 
         Returns:
-            Order object with current status.
+            Order object. The full API order — ``card_name``,
+            ``address_from``, ``price``, ``childs``, etc. — is in ``raw``.
         """
-        data = self._http.get(f"orders/get/{order_id}")
-        return Order.from_dict(data if isinstance(data, dict) else {})
+        data = self._http.get("orders/details", params={"id": order_id})
+        order = data.get("order") if isinstance(data, dict) else None
+        return Order.from_dict(order if isinstance(order, dict) else {})
 
     def list(
         self,

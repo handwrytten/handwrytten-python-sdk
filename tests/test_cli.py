@@ -297,8 +297,8 @@ def test_fonts_list_cli():
 @responses.activate
 def test_orders_get_cli():
     responses.get(
-        BASE + "orders/get/ord_test",
-        json={"id": "ord_test", "status": "delivered", "trackingNumber": "TRK999"},
+        BASE + "orders/details",
+        json={"order": {"id": "ord_test", "status": "delivered", "trackingNumber": "TRK999"}},
     )
 
     runner = CliRunner()
