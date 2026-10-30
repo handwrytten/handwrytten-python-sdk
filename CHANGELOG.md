@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-30
+
 ### Added
 
 - `client.orders.send_single()` creates and pays for one order in a single call (`POST orders/singleStepOrder`) without using the account's shared basket. It takes `font_label` (the font's `label`) and one inline recipient.
