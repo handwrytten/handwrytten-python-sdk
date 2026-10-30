@@ -682,20 +682,27 @@ class TestOrders:
 
     def test_get_order(self, client, mock_api):
         mock_api.get(
-            BASE + "orders/get/ord_abc",
+            BASE + "orders/details",
             json={
-                "id": "ord_abc",
-                "status": "shipped",
-                "message": "Thank you!",
-                "createdAt": "2025-01-15T10:30:00Z",
+                "httpCode": 200,
+                "status": "ok",
+                "order": {
+                    "id": 999,
+                    "status": "shipped",
+                    "message": "Thank you!",
+                    "createdAt": "2025-01-15T10:30:00Z",
+                    "card_name": "Thanks",
+                },
             },
         )
 
-        order = client.orders.get("ord_abc")
+        order = client.orders.get(999)
 
-        assert order.id == "ord_abc"
+        assert "id=999" in mock_api.calls[0].request.url
+        assert order.id == "999"
         assert order.status == "shipped"
         assert order.created_at == "2025-01-15T10:30:00Z"
+        assert order.raw["card_name"] == "Thanks"
 
     def test_list_past_baskets(self, client, mock_api):
         mock_api.get(
