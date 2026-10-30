@@ -67,6 +67,7 @@ class HttpClient:
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
         idempotency_key: str | None = None,
+        idempotent: bool = True,
     ) -> Any:
         """Make an HTTP request with automatic retries and error handling.
 
@@ -76,6 +77,8 @@ class HttpClient:
             params: Query string parameters.
             json_body: JSON request body.
             idempotency_key: Optional idempotency key for safe retries.
+            idempotent: When False, retry only on 429 (see
+                ``post_non_idempotent``).
 
         Returns:
             Parsed JSON response.
@@ -115,6 +118,8 @@ class HttpClient:
 
             except (RateLimitError, ServerError) as e:
                 last_error = e
+                if isinstance(e, ServerError) and not idempotent:
+                    raise
                 if attempt < self.max_retries - 1:
                     wait = RETRY_BACKOFF * (2**attempt)
                     if isinstance(e, RateLimitError) and e.retry_after:
@@ -134,7 +139,7 @@ class HttpClient:
                 last_error = HandwryttenError(
                     f"Connection error: {e}", status_code=None
                 )
-                if attempt < self.max_retries - 1:
+                if idempotent and attempt < self.max_retries - 1:
                     wait = RETRY_BACKOFF * (2**attempt)
                     logger.warning(
                         "Connection error (attempt %d/%d), retrying in %.1fs",
@@ -150,7 +155,7 @@ class HttpClient:
                 last_error = HandwryttenError(
                     f"Request timed out after {self.timeout}s", status_code=None
                 )
-                if attempt < self.max_retries - 1:
+                if idempotent and attempt < self.max_retries - 1:
                     wait = RETRY_BACKOFF * (2**attempt)
                     time.sleep(wait)
                 else:
@@ -239,6 +244,18 @@ class HttpClient:
         return self.request(
             "POST", path, json_body=json_body, idempotency_key=idempotency_key
         )
+
+    def post_non_idempotent(
+        self, path: str, json_body: dict[str, Any] | None = None
+    ) -> Any:
+        """POST that may create something that must not be duplicated (an order).
+
+        Only a 429 is retried, since the server rejected the request before
+        doing any work. A 5xx, timeout or connection error may arrive after
+        the server already created the order, so it is raised to the caller
+        instead.
+        """
+        return self.request("POST", path, json_body=json_body, idempotent=False)
 
     def post_multipart(
         self,

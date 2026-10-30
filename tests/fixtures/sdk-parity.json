@@ -139,6 +139,7 @@
     ],
     "OrdersResource": [
       "send",
+      "send_single",
       "get",
       "list",
       "list_past_baskets"

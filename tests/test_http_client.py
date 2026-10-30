@@ -1,10 +1,13 @@
 """Tests for the HTTP client: auth headers, error handling, retries."""
 
 import pytest
+import requests
+import responses
 
 from handwrytten.exceptions import (
     AuthenticationError,
     BadRequestError,
+    HandwryttenError,
     NotFoundError,
     RateLimitError,
     ServerError,
@@ -135,6 +138,40 @@ class TestRetries:
 
         assert len(cards) == 1
         assert cards[0].title == "Card A"
+        assert len(mock_api.calls) == 2
+
+    def test_post_non_idempotent_does_not_retry_500(self, api_key, mock_api):
+        from handwrytten.http_client import HttpClient
+
+        http = HttpClient(api_key=api_key, max_retries=3)
+        mock_api.post(BASE + "orders/placeBasket", json={"error": "down"}, status=500)
+
+        with pytest.raises(ServerError):
+            http.post_non_idempotent("orders/placeBasket", json_body={})
+        assert len(mock_api.calls) == 1
+
+    @pytest.mark.parametrize("error", [
+        requests.exceptions.Timeout("slow"),
+        requests.exceptions.ConnectionError("reset"),
+    ])
+    def test_post_non_idempotent_does_not_retry_timeout_or_connection_error(self, api_key, error):
+        from handwrytten.http_client import HttpClient
+
+        http = HttpClient(api_key=api_key, max_retries=3)
+        with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+            rsps.post(BASE + "orders/placeBasket", body=error)
+            with pytest.raises(HandwryttenError):
+                http.post_non_idempotent("orders/placeBasket", json_body={})
+            assert len(rsps.calls) == 1
+
+    def test_post_non_idempotent_retries_429(self, api_key, mock_api):
+        from handwrytten.http_client import HttpClient
+
+        http = HttpClient(api_key=api_key, max_retries=2)
+        mock_api.post(BASE + "orders/placeBasket", json={}, status=429, headers={"Retry-After": "0"})
+        mock_api.post(BASE + "orders/placeBasket", json={"ok": True}, status=200)
+
+        assert http.post_non_idempotent("orders/placeBasket", json_body={}) == {"ok": True}
         assert len(mock_api.calls) == 2
 
     def test_no_retry_on_400(self, client, mock_api):

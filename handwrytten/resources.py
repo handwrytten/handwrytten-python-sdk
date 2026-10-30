@@ -1300,7 +1300,7 @@ class BasketResource:
 
         body.update(extra)
 
-        return self._http.post("orders/placeBasket", json_body=body)
+        return self._http.post_non_idempotent("orders/placeBasket", json_body=body)
 
     def remove(self, basket_id: int) -> dict[str, Any]:
         """Remove a single item from the basket.
@@ -1411,7 +1411,7 @@ class BasketResource:
 
         body.update(extra)
 
-        return self._http.post("basket/send", json_body=body)
+        return self._http.post_non_idempotent("basket/send", json_body=body)
 
 
 # ---------------------------------------------------------------------------
@@ -1473,6 +1473,13 @@ def _flatten_address(data: dict[str, Any], prefix: str) -> dict[str, Any]:
             api_suffix = _CAMEL_TO_API.get(key, key)
             result[f"{prefix}_{api_suffix}"] = value
     return result
+
+
+def _flatten_single_step_address(data: dict[str, Any], prefix: str) -> dict[str, Any]:
+    """singleStepOrder takes flat ``recipient_*`` / ``sender_*`` fields; already-prefixed keys pass through."""
+    if any(k.startswith(f"{prefix}_") for k in data):
+        return dict(data)
+    return _flatten_address(data, prefix)
 
 
 # ---------------------------------------------------------------------------
@@ -1836,6 +1843,135 @@ class OrdersResource:
             send_kwargs["check_cass_before_submit"] = check_cass_before_submit
 
         return self._basket.send(**send_kwargs)
+
+    def send_single(
+        self,
+        card_id: str | int,
+        font_label: str,
+        message: str,
+        recipient: Recipient | dict[str, Any],
+        wishes: str | None = None,
+        sender: Sender | dict[str, Any] | int | None = None,
+        message_align: str | None = None,
+        denomination_id: int | None = None,
+        insert_id: int | None = None,
+        bundle_id: int | None = None,
+        credit_card_id: int | None = None,
+        coupon_code: str | None = None,
+        date_send: str | None = None,
+        validate_address: bool | None = None,
+        check_cass_before_submit: bool | None = None,
+        delivery_confirmation: bool | int | None = None,
+        stamp_option_id: int | None = None,
+        webhook_url: str | None = None,
+        client_metadata: str | None = None,
+        suppress_warnings: bool | None = None,
+        **extra: Any,
+    ) -> dict[str, Any]:
+        """Create and pay for one order in a single call (``orders/singleStepOrder``).
+
+        Unlike ``send()``, this never touches the account's basket, so
+        concurrent calls each pay only for their own card.
+
+        A 5xx, timeout or connection error is not retried, because the order
+        may already exist. Check ``client.orders.list()`` before sending again.
+
+        Args:
+            card_id: ID of the card/stationery to use.
+            font_label: Handwriting font label, e.g. ``"Casual David"`` — the
+                ``label`` from ``client.fonts.list()``, not its ``id``.
+            message: Message body.
+            recipient: One recipient — a ``Recipient`` or address dict
+                (camelCase keys, or ``recipient_*`` keys passed through).
+                Saved address IDs are not supported.
+            wishes: Closing/wishes.
+            sender: Return address — ``Sender``, address dict, or saved
+                address ID. Required in practice: the API does not fall back
+                to the account's default return address and rejects the
+                order without one. It can be omitted only by team members
+                whose team enforces a return address.
+            message_align: Text alignment — ``"left"`` or ``"center"``.
+            denomination_id: Gift card denomination ID.
+            insert_id: Insert item ID.
+            bundle_id: Gift box ID from ``client.bundles.list()``. US
+                recipients only; cannot be combined with ``insert_id`` or
+                ``denomination_id``.
+            credit_card_id: Credit card on file to charge.
+            coupon_code: Promotional coupon code.
+            date_send: Scheduled send date.
+            validate_address: Validate the addresses before placing the order.
+            check_cass_before_submit: Validate recipient address before
+                submitting.
+            delivery_confirmation: ``0`` (none), ``1`` (delivery
+                confirmation) or ``2`` (CASS validation only). Booleans map
+                to ``0``/``1``.
+            stamp_option_id: Postal stamp option ID from
+                ``client.shipping.stamp_options()``. Ignored for international.
+            webhook_url: HTTPS URL notified about this order.
+            client_metadata: Metadata string for tracking.
+            suppress_warnings: Suppress merge-field warnings.
+            **extra: Additional parameters passed to ``orders/singleStepOrder``.
+
+        Returns:
+            Dict from the API, including ``order_id``.
+        """
+        if isinstance(recipient, Recipient):
+            recipient = recipient.to_dict()
+        elif not isinstance(recipient, dict):
+            raise TypeError(
+                "recipient must be a single Recipient or address dict; saved "
+                "address IDs and lists are not supported"
+            )
+
+        body: dict[str, Any] = {
+            "card_id": int(card_id),
+            "font_label": font_label,
+            "message": message,
+            **_flatten_single_step_address(recipient, "recipient"),
+        }
+
+        if sender is not None:
+            if isinstance(sender, int):
+                body["return_address_id"] = sender
+            else:
+                if isinstance(sender, Sender):
+                    sender = sender.to_dict()
+                body.update(_flatten_single_step_address(sender, "sender"))
+
+        if wishes is not None:
+            body["wishes"] = wishes
+        if message_align is not None:
+            body["message_align"] = message_align
+        if denomination_id is not None:
+            body["denomination_id"] = denomination_id
+        if insert_id is not None:
+            body["insert_id"] = insert_id
+        if bundle_id is not None:
+            body["bundle_id"] = bundle_id
+        if credit_card_id is not None:
+            body["credit_card_id"] = credit_card_id
+        if coupon_code is not None:
+            body["couponCode"] = coupon_code
+        if date_send is not None:
+            body["date_send"] = date_send
+        if validate_address is not None:
+            body["validate_address"] = validate_address
+        if check_cass_before_submit is not None:
+            body["check_cass_before_submit"] = int(check_cass_before_submit)
+        if delivery_confirmation is not None:
+            body["delivery_confirmation"] = int(delivery_confirmation)
+        if stamp_option_id is not None:
+            body["stamp_option_id"] = stamp_option_id
+        if webhook_url is not None:
+            body["webhook_url"] = webhook_url
+        if client_metadata is not None:
+            body["client_metadata"] = client_metadata
+        if suppress_warnings is not None:
+            body["supressWarnings"] = suppress_warnings
+
+        body.update(extra)
+
+        return self._http.post_non_idempotent("orders/singleStepOrder", json_body=body)
 
     def get(self, order_id: str) -> Order:
         """Retrieve an order by ID.

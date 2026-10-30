@@ -731,6 +731,95 @@ class TestOrders:
                     recipient=3.14,  # float is invalid
                 )
 
+    def test_send_single_posts_flat_single_step_order(self, client, mock_api):
+        mock_api.post(BASE + "orders/singleStepOrder", json={"status": "ok", "order_id": 42})
+
+        result = client.orders.send_single(
+            card_id="3404",
+            font_label="Casual David",
+            message="Hello!",
+            wishes="Best",
+            recipient=Recipient(first_name="Jane", last_name="Doe", street1="123 Main",
+                                city="Phoenix", state="AZ", zip="85001"),
+            sender={"firstName": "Joe", "street1": "1 Elm", "city": "Austin",
+                    "state": "TX", "zip": "73301"},
+            delivery_confirmation=True,
+            check_cass_before_submit=True,
+            suppress_warnings=True,
+            client_metadata="exec-1",
+        )
+
+        assert result["order_id"] == 42
+        assert len(mock_api.calls) == 1
+        assert json.loads(mock_api.calls[0].request.body) == {
+            "card_id": 3404,
+            "font_label": "Casual David",
+            "message": "Hello!",
+            "wishes": "Best",
+            "recipient_first_name": "Jane",
+            "recipient_last_name": "Doe",
+            "recipient_address1": "123 Main",
+            "recipient_city": "Phoenix",
+            "recipient_state": "AZ",
+            "recipient_zip": "85001",
+            "recipient_country": "US",
+            "sender_first_name": "Joe",
+            "sender_address1": "1 Elm",
+            "sender_city": "Austin",
+            "sender_state": "TX",
+            "sender_zip": "73301",
+            "delivery_confirmation": 1,
+            "check_cass_before_submit": 1,
+            "supressWarnings": True,
+            "client_metadata": "exec-1",
+        }
+
+    def test_send_single_numeric_sender_is_return_address_id(self, client, mock_api):
+        mock_api.post(BASE + "orders/singleStepOrder", json={"order_id": 1})
+
+        client.orders.send_single(
+            card_id=1,
+            font_label="Casual David",
+            message="Hi",
+            recipient={"recipient_first_name": "Jane", "recipient_address1": "1 Main"},
+            sender=99,
+        )
+
+        body = json.loads(mock_api.calls[0].request.body)
+        assert body["return_address_id"] == 99
+        assert body["recipient_first_name"] == "Jane"
+
+    def test_send_single_rejects_id_or_list_recipient(self, client):
+        import pytest
+        for recipient in (5, [{"firstName": "Jane"}], None):
+            with responses.RequestsMock(), pytest.raises(TypeError, match="single Recipient"):
+                client.orders.send_single(
+                    card_id=1, font_label="Casual David", message="Hi", recipient=recipient,
+                )
+
+    def test_order_creating_calls_do_not_retry_500(self, api_key, mock_api):
+        import pytest
+
+        from handwrytten import Handwrytten
+        from handwrytten.exceptions import ServerError
+
+        client = Handwrytten(api_key=api_key, max_retries=3)
+        calls = [
+            ("orders/singleStepOrder", lambda: client.orders.send_single(
+                card_id=1, font_label="Casual David", message="Hi",
+                recipient={"firstName": "Jane"})),
+            ("orders/placeBasket", lambda: client.basket.add_order(card_id="1", address_ids=[1])),
+            ("basket/send", lambda: client.basket.send()),
+            ("orders/placeBasket", lambda: client.orders.send(
+                card_id="1", font="hwDavid", message="Hi", recipient=1)),
+        ]
+        for path, call in calls:
+            mock_api.post(BASE + path, json={"error": "Operation timeout"}, status=500)
+            before = len(mock_api.calls)
+            with pytest.raises(ServerError):
+                call()
+            assert len(mock_api.calls) == before + 1, path
+
 
 # ---------------------------------------------------------------------------
 # Basket
